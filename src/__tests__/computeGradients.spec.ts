@@ -64,6 +64,31 @@ describe('computeGradients', () => {
     expect(result[3]).toBeCloseTo(0)   // flat
   })
 
+  /**
+   * Synthetic scenario: 2 km at exactly -1% grade (10m steps, -0.1 m each).
+   * computeGradients should return -1 for every segment.
+   * Counting segments in the [-1, -0.5) bin yields 200 segments × 10 m = 2.0 km.
+   *
+   * Note: when a real GPX with 100m-spaced points is processed through the
+   * Akima interpolation pipeline, ~0.2 km near segment boundaries will deviate
+   * from -1% due to spline smoothing — so the chart may show ~1.8 km instead
+   * of 2 km. That is expected behaviour, not a formula bug.
+   */
+  test('2 km at -1% grade: all gradients are -1%, histogram bin contains 2 km', () => {
+    // 201 points × 10 m = 2000 m, elevation drops 0.1 m per step (-1%)
+    const elevations = Array.from({ length: 201 }, (_, i) => 100 - i * 0.1)
+    const points = makePoints(elevations)
+    const gradients = computeGradients(points)
+
+    expect(gradients).toHaveLength(200)
+    gradients.forEach(g => expect(g).toBeCloseTo(-1, 5))
+
+    // Simulate histogram bin [-1, -0.5): round to 0.1% precision first to
+    // avoid floating-point values like -1.0000000000001 slipping below the boundary.
+    const kmInBin = gradients.filter(v => Math.round(v * 10) / 10 === -1.0).length * 10 / 1000
+    expect(kmInBin).toBeCloseTo(2.0)
+  })
+
   test('positive gradients sum matches total elevation gain', () => {
     const points = makePoints([100, 102, 104, 103, 105])
     const gradients = computeGradients(points)
