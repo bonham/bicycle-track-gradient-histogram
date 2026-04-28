@@ -192,9 +192,8 @@ interface TrackEntry {
 | `ZoomState.spec.ts`           | Zoom state calculation tests                     |
 | `transformHelpers.spec.ts`    | Segment transformation tests                     |
 | `detectEqualElements.spec.ts` | Array duplicate detection tests                  |
-| `useCursorSync.spec.ts`       | CursorSync composable unit tests                 |
-| `cursorToInterval.spec.ts`    | Interval mapping from cursor position tests      |
-| `cursorSyncRendering.spec.ts` | Component rendering with cursor sync integration |
+| `computeGradients.spec.ts`    | Gradient computation unit tests                  |
+| `appRendering.spec.ts`        | App multi-track rendering and UI behavior tests  |
 
 ## Key Algorithms
 
