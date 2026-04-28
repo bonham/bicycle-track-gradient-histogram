@@ -11,12 +11,18 @@ import type { TrackEntry } from '@/types/TrackEntry';
 import type { FeatureCollection, LineString } from 'geojson';
 
 const tracks = ref<TrackEntry[]>([])
+const exampleTrackLoaded = ref(false)
 
 function getNextColor(): string {
   return TRACK_COLORS[tracks.value.length % TRACK_COLORS.length]!
 }
 
 async function addFiles(files: FileList): Promise<void> {
+  const clearExample = exampleTrackLoaded.value
+  if (clearExample) {
+    tracks.value = []
+    exampleTrackLoaded.value = false
+  }
   for (const file of Array.from(files)) {
     try {
       const entry = await loadSingleFile(file, getNextColor())
@@ -38,6 +44,7 @@ async function initialLoad(): Promise<void> {
   const geojson = await response.json() as FeatureCollection<LineString>
   const entry = featureCollectionToTrackEntry(geojson, 'kl', getNextColor())
   tracks.value = [entry]
+  exampleTrackLoaded.value = true
 }
 
 // Scroll hint
