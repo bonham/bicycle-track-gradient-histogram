@@ -18,7 +18,7 @@ function reEmit(payload: FileList) {
 <template>
   <DropField @files-dropped="reEmit">
     <slot for="input"></slot>
-    <input id="input" type="file" class="hideinput" @change="onChange">
+    <input id="input" type="file" multiple class="hideinput" @change="onChange">
   </DropField>
 </template>
 <style scoped>

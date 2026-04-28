@@ -1,29 +1,24 @@
-# La Rampa — Cycling Climb Analyzer
+# La Rampa — Multi-Track Gradient Analyzer
 
-La Rampa is a web application for cyclists who want to analyze the climbs in their recorded routes. Load a GPX or Garmin FIT file, and the app will automatically detect climbs based on configurable gradient thresholds — then visualize them on an interactive map, an elevation profile chart, and a summary table.
+La Rampa is a Progressive Web App for cyclists who want to analyze the gradient distribution of their recorded routes. Load one or more GPX or Garmin FIT files and inspect them together on an interactive map, an elevation profile chart, and a gradient histogram.
 
 ## Features
 
-- **GPX and Garmin FIT file support** — drag-and-drop or file picker
-- **Interactive map** — track and detected climbs displayed on OpenStreetMap (via OpenLayers)
-- **Elevation profile chart** — zoomable and pannable distance/elevation diagram with climb highlighting
-- **Climb summary table** — start position, length, elevation gain, and average gradient for each detected climb
-- **Configurable detection** — adjust start gradient, stop gradient, and sliding window size to tune climb sensitivity
-- **Cross-linked highlighting** — hover over the chart, map, or table to highlight the corresponding position in all views
+- **GPX and Garmin FIT file support** — drag-and-drop or file picker; select multiple files at once
+- **Multi-track view** — upload several routes and compare them side by side in all views
+- **Interactive map** — all tracks displayed on OpenStreetMap (via OpenLayers), each in a distinct color
+- **Elevation profile chart** — zoomable and pannable distance/elevation diagram showing all loaded tracks
+- **Gradient histogram** — for each track, a curve showing how many km have a gradient at or above a given threshold; multiple curves on one chart for easy comparison
+- **Clear button** — remove all loaded tracks in one click
 
-## How Climb Detection Works
+## Gradient Histogram Explained
 
-The app uses a sliding window algorithm to find sustained climbs in the elevation profile:
+The gradient histogram answers: _"How much of this route is at least X% steep?"_
 
-1. The GPS track is first resampled to equidistant points (10 m spacing) using Akima spline interpolation, which smooths out GPS noise while preserving the true elevation profile.
+- **X-axis**: gradient threshold in percent (e.g. −10 % to +15 %)
+- **Y-axis**: total kilometers of the track where the gradient equals or exceeds the threshold
 
-2. A sliding window moves along the track. The window size (default: 500 m) defines the distance over which gradient is measured.
-
-3. **Start trigger**: When the elevation gain within the window reaches the start gradient threshold (default: 5%), a climb begins. The start point is set to the lowest elevation within the window.
-
-4. **Stop trigger**: When the elevation gain within the window drops below the stop gradient threshold (default: 1%), the climb ends. The end point is set to the highest elevation within the window.
-
-This approach detects climbs that are sustained over a meaningful distance, filtering out short bumps and GPS noise.
+The curve is monotonically non-increasing: at threshold 0% you see the total "uphill + flat" km; at 10% only the steep sections remain. Comparing multiple tracks on the same chart immediately shows which route has more climbing.
 
 ## Getting Started
 
@@ -50,7 +45,7 @@ The production build is output to `dist/` with base path `/larampa/`.
 - [Vue 3](https://vuejs.org/) with Composition API and TypeScript
 - [Vite](https://vitejs.dev/) for build tooling
 - [OpenLayers](https://openlayers.org/) for map rendering
-- [Chart.js](https://www.chartjs.org/) for the elevation profile
+- [Chart.js](https://www.chartjs.org/) for the elevation profile and gradient histogram
 - [Pinia](https://pinia.vuejs.org/) for state management
 - [@garmin/fitsdk](https://www.npmjs.com/package/@garmin/fitsdk) for Garmin FIT file parsing
 - [@tmcw/togeojson](https://www.npmjs.com/package/@tmcw/togeojson) for GPX parsing
@@ -68,7 +63,7 @@ Three modules from this project are published as independent npm packages under 
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------- |
 | [`@la-rampa/elevation-cursor-sync`](packages/elevation-cursor-sync/README.md) | Distance-based cursor sync composable (`useCursorSync`, `CursorSync`, `TrackPoint`) | `vue`                       |
 | [`@la-rampa/elevation-chart`](packages/elevation-chart/README.md)             | Interactive Vue 3 elevation profile chart with zoom, pan, and touch gestures        | `vue`, `chart.js`           |
-| [`@la-rampa/track-map-utils`](packages/track-map-utils/README.md)             | OpenLayers utilities: spatial index, GeoJSON converters, layer factory, zoom helper | `ol`, `kdbush`, `geokdbush` |
+| [`@la-rampa/track-map-utils`](packages/track-map-utils/README.md)             | OpenLayers utilities: GeoJSON converters, `zoomToTrack`                             | `ol`, `kdbush`, `geokdbush` |
 
 ### Package development (monorepo)
 

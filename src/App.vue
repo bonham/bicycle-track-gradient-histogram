@@ -1,217 +1,46 @@
 <script setup lang="ts">
 import MapView from '@/components/MapView.vue';
-import { ElevationChart } from '@la-rampa/elevation-chart';
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
-import { TrackSegmentIndexed } from '@/lib/TrackData'
-import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
-import type { FeatureCollection, Feature, MultiLineString, GeoJsonProperties, LineString } from 'geojson';
+import MultiElevationChart from '@/components/MultiElevationChart.vue';
+import GradientHistogramChart from '@/components/GradientHistogramChart.vue';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
-import { analyzeAscent } from '@/lib/analyzeAscent'
-import { extractFirstSegmentFirstTrack } from '@/lib/app/extractFirstSegmentFirstTrack';
-import { Track2GeoJson } from '@/lib/Track2GeoJson';
-import { readDroppedFile } from '@/lib/fileReader/readDroppedFile';
-import type { IntervalDetail } from './types/IntervalDetails';
-import { debounce } from 'lodash';
-import { useCursorSync, cursorToInterval } from '@la-rampa/elevation-cursor-sync';
-import type { TrackPoint } from '@la-rampa/elevation-cursor-sync';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { loadSingleFile, featureCollectionToTrackEntry } from '@/lib/app/loadSingleFile';
+import { TRACK_COLORS } from '@/types/TrackEntry';
+import type { TrackEntry } from '@/types/TrackEntry';
+import type { FeatureCollection, LineString } from 'geojson';
 
+const tracks = ref<TrackEntry[]>([])
 
-const START_TRIGGER_GRADIENT = 5 // in percent
-const STOP_TRIGGER_GRADIENT = 1
-const WINDOW_SIZE_METERS = 500; // in index numbers
-const POINT_DISTANCE = 10; // Distance in meters for equidistant points
-const DEBOUNCE_DELAY = 600; // debounce of user input
-const MIN_WINDOW_WIDTH = 20; // Minimum points in window
-
-const featureCollection = ref<FeatureCollection>({ type: "FeatureCollection", features: [] })
-const zoomMapOnUpdate = ref(false)
-const windowSizeMeters = ref(WINDOW_SIZE_METERS)
-const startGradient = ref(START_TRIGGER_GRADIENT)
-const stopGradient = ref(STOP_TRIGGER_GRADIENT)
-const intervalDetails = ref<IntervalDetail[]>([])
-const overlayLineStringFeature = ref<Feature<MultiLineString> | null>(null)
-const slopeIntervals = ref<[number, number][]>([])
-const windowTooSmall = ref(false)
-
-
-// Computation chain
-// featureCollection -> trackSegmentIndexed -> lineStringFeature
-
-// computed
-const trackSegmentIndexed = computed(() => {
-
-  // Convert from geojson to list of track objects
-  const tracks = GeoJsonLoader.loadFromGeoJson(featureCollection.value);
-
-  // Only first segment is taken into account
-  const segment = extractFirstSegmentFirstTrack(tracks)
-
-  // interpolate
-  const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
-  const segmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
-  return segmentIndexed
-})
-
-// computed lineStringFeature - depends on tracksegmentIndexed
-const lineStringFeature = computed(() => {
-  const segment = trackSegmentIndexed.value.getSegment()
-  const t2g = new Track2GeoJson(segment)
-  return t2g.toGeoJsonLineStringFeature()
-})
-
-// TrackPoint array derived from the equidistant segment — shared between chart, map, and cursor sync
-const trackPoints = computed<TrackPoint[]>(() =>
-  trackSegmentIndexed.value.getSegment().map(p => ({
-    distance: p.distanceFromStart,
-    elevation: p.elevation,
-    lon: p.lon,
-    lat: p.lat,
-  }))
-)
-
-// Single shared cursor instance — passed to both MapView and ElevationChart
-const cursor = useCursorSync(trackPoints)
-
-// Table row highlighting: maps cursor position to a 1-based interval ID
-const tableHighlightIndex = cursorToInterval(cursor, slopeIntervals)
-
-/**
- * Details of slope intervals for table display
- */
-const updateIntervalDetails = (
-  slopeIntervals: [number, number][],
-  trackSegmentIndexed: TrackSegmentIndexed
-) => {
-  const tmpDetails = slopeIntervals.map((intv, idx) => {
-    const start = trackSegmentIndexed.get(intv[0])!
-    const end = trackSegmentIndexed.get(intv[1])!
-    const dist = (end.distanceFromStart - start.distanceFromStart)
-    const elevGain = end.elevation - start.elevation
-    const avgGradient = (elevGain / dist) * 100
-    return {
-      id: idx + 1,
-      startIndex: intv[0],
-      endIndex: intv[1],
-      start_distance_m: start.distanceFromStart,
-      interval_size_m: dist,
-      elevationGain_m: elevGain,
-      averageGradient_percent: avgGradient
-    }
-  })
-  intervalDetails.value = tmpDetails
+function getNextColor(): string {
+  return TRACK_COLORS[tracks.value.length % TRACK_COLORS.length]!
 }
 
-
-/**
- * Overlay line string feature for showing on map
- */
-const updateOverlayLineStringFeature = (
-  slopeIntervals: [number, number][],
-  lineStringFeature: Feature<LineString, GeoJsonProperties>
-) => {
-
-  if (lineStringFeature !== null) {
-
-    const coord = lineStringFeature.geometry.coordinates
-    const mlsCoordinates = slopeIntervals.map(
-      (intv) => coord.slice(intv[0], intv[1] + 1)
-    )
-
-    const multiLineString: MultiLineString = {
-      type: "MultiLineString",
-      coordinates: mlsCoordinates
+async function addFiles(files: FileList): Promise<void> {
+  for (const file of Array.from(files)) {
+    try {
+      const entry = await loadSingleFile(file, getNextColor())
+      tracks.value = [...tracks.value, entry]
+    } catch (err) {
+      console.error(`Failed to load ${file.name}:`, err)
     }
-
-    const multiLineStringFeature: Feature<MultiLineString> = {
-      type: "Feature",
-      properties: {},
-      geometry: multiLineString
-    }
-
-    // set reactive property
-    overlayLineStringFeature.value = multiLineStringFeature
   }
 }
 
-/** Watch change of computed refs */
-watch([
-  () => startGradient.value,
-  () => stopGradient.value,
-  () => windowSizeMeters.value,
-  () => trackSegmentIndexed.value,
-  () => lineStringFeature.value
-], debounce((newValues) => {
+function clearTracks(): void {
+  tracks.value = []
+}
 
-  const [
-    newStartGradient,
-    newStopGradient,
-    newWindowSizeMeters,
-    newTrackSegmentIndexed,
-    newLineStringFeature
-  ] = newValues
-
-  // ----- Prep calculations
-  const windowSizePoints = Math.round(newWindowSizeMeters / POINT_DISTANCE)
-  const startThreshold_m = (newStartGradient * newWindowSizeMeters) / 100 // convert from gradient percent to meters
-  const stopThreshold_m = (newStopGradient * newWindowSizeMeters) / 100 // convert from gradient percent to meters
-
-  let newSlopeIntervals: [number, number][]
-
-  if (windowSizePoints < MIN_WINDOW_WIDTH) {
-    windowTooSmall.value = true
-    newSlopeIntervals = []
-
-  } else {
-    // window ok
-    windowTooSmall.value = false
-
-    if (!newStartGradient || !newStopGradient || !windowSizePoints) {
-
-      // any field empty
-      newSlopeIntervals = []
-
-    } else {
-      newSlopeIntervals = analyzeAscent(
-        trackSegmentIndexed.value.getSegment(),
-        startThreshold_m,
-        stopThreshold_m,
-        windowSizePoints
-      )
-    }
-  }
-
-  // update reactive properties
-  slopeIntervals.value = newSlopeIntervals
-  updateIntervalDetails(newSlopeIntervals, newTrackSegmentIndexed)
-  updateOverlayLineStringFeature(newSlopeIntervals, newLineStringFeature)
-
-}, DEBOUNCE_DELAY))
-
-
-/** Main trigger */
-initialLoad().catch((err) => {
-  console.error("Error in initial load:", err)
-})
+initialLoad().catch(err => console.error('Error in initial load:', err))
 
 async function initialLoad(): Promise<void> {
-  const response = await fetch('./kl.json');
-  const geojson = await response.json();
-  featureCollection.value = geojson
-  zoomMapOnUpdate.value = true
+  const response = await fetch('./kl.json')
+  const geojson = await response.json() as FeatureCollection<LineString>
+  const entry = featureCollectionToTrackEntry(geojson, 'kl', getNextColor())
+  tracks.value = [entry]
 }
 
-/********************** File handling  **************************************/
-
-async function processUploadFiles(files: FileList) {
-  zoomMapOnUpdate.value = true
-  slopeIntervals.value = [] // important, because otherwise we have slopes from previous track drawn ... ( and leads to index out of bound errors)
-  featureCollection.value = await readDroppedFile(files)
-}
-
-
-// Scroll hint handling
+// Scroll hint
 const showScrollHint = ref(false)
 
 const checkScrollHint = () => {
@@ -230,7 +59,6 @@ onUnmounted(() => {
   window.removeEventListener('scroll', checkScrollHint)
   window.removeEventListener('resize', checkScrollHint)
 })
-
 </script>
 
 <template>
@@ -238,72 +66,30 @@ onUnmounted(() => {
     <nav class="row navbar bg-body-tertiary mb-2">
       <div class="container-fluid">
         <span class="fw-bold mb-0">La Rampa</span>
-        <DropPanel @files-dropped="processUploadFiles">
+        <span v-if="tracks.length > 0" class="badge bg-secondary me-2">
+          {{ tracks.length }} track{{ tracks.length > 1 ? 's' : '' }}
+        </span>
+        <button v-if="tracks.length > 0" class="btn btn-outline-secondary btn-sm me-2"
+          @click="clearTracks">Clear</button>
+        <DropPanel @files-dropped="addFiles">
           <label for="input" class="border border-1 rounded px-2 py-1 d-flex flex-row">
-            <div>
-              Upload
-            </div>
+            Upload
           </label>
         </DropPanel>
       </div>
     </nav>
-    <DropField @files-dropped="processUploadFiles">
+    <DropField @files-dropped="addFiles">
       <div class="row border py-1">
-        <MapView :cursor="cursor" :points="trackPoints" :line-string-f="lineStringFeature"
-          :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate" />
+        <MapView :tracks="tracks" :zoom-on-update="true" />
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
-      <ElevationChart :cursor="cursor" :points="trackPoints" :overlay-intervals="slopeIntervals" />
+      <MultiElevationChart :tracks="tracks" />
     </div>
-    <!---->
-    <form class="row mb-3 g-2">
-      <div class="col">
-        <div class="input-group">
-          <span class="input-group-text smallfont">Start %</span>
-          <input type="text" class="form-control smallfont" v-model="startGradient">
-        </div>
-      </div>
-      <div class="col">
-        <div class="input-group">
-          <span class="input-group-text smallfont">Stop %</span>
-          <input type="text" class="form-control smallfont" v-model="stopGradient">
-        </div>
-      </div>
-      <div class="col">
-        <div class="input-group">
-          <span class="input-group-text smallfont">Window (m)</span>
-          <input type="text" class="form-control smallfont" :class="{ 'is-invalid': windowTooSmall }"
-            v-model="windowSizeMeters">
-          <div class="invalid-feedback smallfont"> Value too small</div>
-        </div>
-      </div>
-    </form>
-    <!---->
-    <div class="row my-3">
-      <table class="table table-sm table-bordered smallfont">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Start (km)</th>
-            <th>Length (km)</th>
-            <th>Elev. Gain (m)</th>
-            <th>Grad (%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in intervalDetails" :key="item.id"
-            :class="{ 'table-warning': item.id === tableHighlightIndex }">
-            <td>{{ item.id }}</td>
-            <td>{{ (item.start_distance_m / 1000).toFixed(1) }}</td>
-            <td>{{ (item.interval_size_m / 1000).toFixed(1) }}</td>
-            <td>{{ item.elevationGain_m.toFixed(0) }}</td>
-            <td>{{ item.averageGradient_percent.toFixed(1) }}%</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="row my-3 py-3 border">
+      <GradientHistogramChart :tracks="tracks" />
     </div>
-  </div> <!-- Container -->
+  </div>
   <div v-if="showScrollHint" class="row text-center scroll-indicator">
     <div class="col-3"></div>
     <i class="col-1 bi bi-caret-down-fill animate-bounce"></i>
@@ -314,10 +100,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.smallfont {
-  font-size: 0.65rem;
-}
-
 .scroll-indicator {
   position: fixed;
   bottom: 0px;
@@ -332,6 +114,7 @@ onUnmounted(() => {
 }
 
 @keyframes bounce {
+
   0%,
   100% {
     transform: translateX(-50%) translateY(0);
