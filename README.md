@@ -13,12 +13,17 @@ Gradient Histogram is a Progressive Web App for cyclists who want to analyze the
 
 ## Gradient Histogram Explained
 
-The gradient histogram answers: _"How much of this route is at least X% steep?"_
+The gradient histogram answers: _"How much of this route is at least X% steep (or steep downhill)?"_
 
 - **X-axis**: gradient threshold in percent (e.g. −10 % to +15 %)
-- **Y-axis**: total kilometers of the track where the gradient equals or exceeds the threshold
+- **Y-axis**: total kilometers of the track that meet the threshold criterion
 
-The curve is monotonically non-increasing: at threshold 0% you see the total "uphill + flat" km; at 10% only the steep sections remain. Comparing multiple tracks on the same chart immediately shows which route has more climbing.
+The Y-value is computed differently depending on the sign of the threshold:
+
+- **Threshold ≥ 0 %** — counts segments where `gradient ≥ threshold` (uphill at least as steep as the threshold)
+- **Threshold < 0 %** — counts segments where `gradient ≤ threshold` (downhill at least as steep as the threshold)
+
+The curve is monotonically non-increasing: at threshold 0 % you see the total uphill + flat km; at 10 % only the steep climbs remain. For negative thresholds, at −5 % you see all segments descending at 5 % or more. Comparing multiple tracks on the same chart immediately shows which route has more climbing or descending.
 
 ## Getting Started
 
