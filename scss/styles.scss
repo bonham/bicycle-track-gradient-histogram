@@ -1,3 +1,7 @@
+// Override Bootstrap SCSS variables before import
+$body-bg: #f8f5e8;
+$body-tertiary-bg: #f8f5e8;
+
 // Import all of Bootstrap's CSS
 @import '~bootstrap/scss/bootstrap';
 @import '~bootstrap-icons/font/bootstrap-icons.css';
