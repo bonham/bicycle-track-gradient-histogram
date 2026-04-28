@@ -21,10 +21,10 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@garmin/fitsdk": "^21.178.0",
     "@gradhist/elevation-chart": "0.1.0",
     "@gradhist/elevation-cursor-sync": "0.1.0",
     "@gradhist/track-map-utils": "0.1.0",
-    "@garmin/fitsdk": "^21.178.0",
     "@popperjs/core": "^2.11.8",
     "@tmcw/togeojson": "^7.1.2",
     "@types/luxon": "^3.7.1",
@@ -33,6 +33,7 @@
     "bootstrap-icons": "^1.13.1",
     "buffer": "^6.0.3",
     "chart.js": "^4.5.0",
+    "chartjs-plugin-zoom": "^2.2.0",
     "commons-math-interpolation": "^2.2.3",
     "geokdbush": "^2.0.1",
     "hammerjs": "^2.0.8",

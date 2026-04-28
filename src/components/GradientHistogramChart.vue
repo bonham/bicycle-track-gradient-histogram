@@ -1,25 +1,34 @@
 <template>
   <div class="chart-container px-1">
-    <canvas ref="canvasRef"></canvas>
+    <canvas ref="canvasRef" @dblclick="resetZoom"></canvas>
+    <button v-if="isZoomed" class="reset-zoom-btn" @click="resetZoom">Reset zoom</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, watchEffect } from 'vue';
-import { ref } from 'vue';
+import { onMounted, watchEffect, ref } from 'vue';
 import { Chart } from 'chart.js/auto';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import type { TrackEntry } from '@/types/TrackEntry';
+
+Chart.register(zoomPlugin);
 
 const props = defineProps<{
   tracks: TrackEntry[]
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const isZoomed = ref(false)
 
 type TType = 'line'
 type TData = { x: number; y: number }[]
 
 let chartInstance: Chart<TType, TData, string> | null = null
+
+function resetZoom() {
+  chartInstance?.resetZoom()
+  isZoomed.value = false
+}
 
 /**
  * For a gradient threshold g, computes how many km of track qualify:
@@ -83,6 +92,9 @@ watchEffect(
       }
     }
 
+    chartInstance.resetZoom()
+    isZoomed.value = false
+
     if (firstRun) {
       requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
       firstRun = false
@@ -117,6 +129,19 @@ onMounted(() => {
       plugins: {
         tooltip: { enabled: false },
         legend: { display: false },
+        zoom: {
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: 'x',
+            onZoom: () => { isZoomed.value = true },
+          },
+          pan: {
+            enabled: true,
+            mode: 'x',
+            onPan: () => { isZoomed.value = true },
+          },
+        },
       },
       elements: {
         point: { radius: 0 },
@@ -129,11 +154,26 @@ onMounted(() => {
 
 <style scoped>
 .chart-container {
+  position: relative;
   width: 100%;
   height: 250px;
 }
 canvas {
   width: 100%;
   height: 100%;
+}
+.reset-zoom-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.reset-zoom-btn:hover {
+  background: #fff;
 }
 </style>
