@@ -1,6 +1,6 @@
 # Implementation
 
-This document describes the architecture, data flow, and source files of La Rampa.
+This document describes the architecture, data flow, and source files of Gradient Histogram.
 
 ## Reusable Packages
 
@@ -8,9 +8,9 @@ Three modules are extracted into independently publishable npm packages under `p
 
 | Package                           | Path                              | Contents                                                                                  |
 | --------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------- |
-| `@la-rampa/elevation-cursor-sync` | `packages/elevation-cursor-sync/` | `TrackPoint`, `CursorSync`, `useCursorSync`, `cursorToInterval`                           |
-| `@la-rampa/elevation-chart`       | `packages/elevation-chart/`       | `ElevationChart.vue`, `ZoomPanState`, `stretchInterval`, chart plugins and event handlers |
-| `@la-rampa/track-map-utils`       | `packages/track-map-utils/`       | GeoJSON converters, `zoomToTrack`                                                         |
+| `@gradhist/elevation-cursor-sync` | `packages/elevation-cursor-sync/` | `TrackPoint`, `CursorSync`, `useCursorSync`, `cursorToInterval`                           |
+| `@gradhist/elevation-chart`       | `packages/elevation-chart/`       | `ElevationChart.vue`, `ZoomPanState`, `stretchInterval`, chart plugins and event handlers |
+| `@gradhist/track-map-utils`       | `packages/track-map-utils/`       | GeoJSON converters, `zoomToTrack`                                                         |
 
 The app consumes all three via npm workspace symlinks. `vite.config.ts` and `tsconfig.app.json` both carry path aliases that resolve package names directly to their TypeScript source, so no pre-build step is needed during development.
 
@@ -103,7 +103,7 @@ interface TrackEntry {
 
 ### Core Library (`src/lib/`)
 
-> **Note on `TrackPoint` naming:** Two distinct types share this name. `TrackData.ts` exports `TrackPoint { lat, lon, elevation }` (raw GPS point). `@la-rampa/elevation-cursor-sync` exports `TrackPoint { distance, elevation, lon, lat }` (resampled point with cumulative distance). Components use the elevation-cursor-sync version.
+> **Note on `TrackPoint` naming:** Two distinct types share this name. `TrackData.ts` exports `TrackPoint { lat, lon, elevation }` (raw GPS point). `@gradhist/elevation-cursor-sync` exports `TrackPoint { distance, elevation, lon, lat }` (resampled point with cumulative distance). Components use the elevation-cursor-sync version.
 
 | File                    | Description                                                                                                                                                                                                                                                                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -211,7 +211,8 @@ gradient_i = (elevation[i+1] - elevation[i]) / 10 * 100   (percent)
 1. Collect all gradient values; derive global `gMin` and `gMax`.
 2. Generate x-axis values from `gMin` to `gMax` in 0.5 % steps.
 3. For each track and each threshold `g`:
-   `km_above_g = count(gradients >= g) × 10 m / 1000`
+   - `g >= 0`: `km = count(gradients >= g) × 10 m / 1000`
+   - `g < 0`:  `km = count(gradients <= g) × 10 m / 1000`
 4. Plot each track as a line on a shared axis.
 
 The resulting curve is monotonically non-increasing — as the threshold rises, fewer segments qualify.

@@ -42,6 +42,6 @@ describe('App', () => {
         },
       },
     })
-    expect(wrapper.text()).toContain('La Rampa')
+    expect(wrapper.text()).toContain('Gradient Histogram')
   })
 })

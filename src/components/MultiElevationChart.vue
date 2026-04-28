@@ -14,7 +14,7 @@ import {
   panEventHandler,
   touchEventHandler,
   TransformPixelScale2ChartScale,
-} from '@la-rampa/elevation-chart';
+} from '@gradhist/elevation-chart';
 import type { TrackEntry } from '@/types/TrackEntry';
 
 const ZOOM_SENSITIVITY = 0.001

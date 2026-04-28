@@ -1,6 +1,6 @@
-# La Rampa — Multi-Track Gradient Analyzer
+# Gradient Histogram — Multi-Track Gradient Analyzer
 
-La Rampa is a Progressive Web App for cyclists who want to analyze the gradient distribution of their recorded routes. Load one or more GPX or Garmin FIT files and inspect them together on an interactive map, an elevation profile chart, and a gradient histogram.
+Gradient Histogram is a Progressive Web App for cyclists who want to analyze the gradient distribution of their recorded routes. Load one or more GPX or Garmin FIT files and inspect them together on an interactive map, an elevation profile chart, and a gradient histogram.
 
 ## Features
 
@@ -38,7 +38,7 @@ npm test
 npm run build
 ```
 
-The production build is output to `dist/` with base path `/larampa/`.
+The production build is output to `dist/` with base path `/gradhist/`.
 
 ## Tech Stack
 
@@ -57,13 +57,13 @@ See [IMPLEMENTATION.md](IMPLEMENTATION.md) for a detailed description of the app
 
 ## Reusable Packages
 
-Three modules from this project are published as independent npm packages under the `@la-rampa` scope. Other projects can install them without taking a dependency on the full application.
+Three modules from this project are published as independent npm packages under the `@gradhist` scope. Other projects can install them without taking a dependency on the full application.
 
 | Package                                                                       | Description                                                                         | Peer deps                   |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------- |
-| [`@la-rampa/elevation-cursor-sync`](packages/elevation-cursor-sync/README.md) | Distance-based cursor sync composable (`useCursorSync`, `CursorSync`, `TrackPoint`) | `vue`                       |
-| [`@la-rampa/elevation-chart`](packages/elevation-chart/README.md)             | Interactive Vue 3 elevation profile chart with zoom, pan, and touch gestures        | `vue`, `chart.js`           |
-| [`@la-rampa/track-map-utils`](packages/track-map-utils/README.md)             | OpenLayers utilities: GeoJSON converters, `zoomToTrack`                             | `ol`, `kdbush`, `geokdbush` |
+| [`@gradhist/elevation-cursor-sync`](packages/elevation-cursor-sync/README.md) | Distance-based cursor sync composable (`useCursorSync`, `CursorSync`, `TrackPoint`) | `vue`                       |
+| [`@gradhist/elevation-chart`](packages/elevation-chart/README.md)             | Interactive Vue 3 elevation profile chart with zoom, pan, and touch gestures        | `vue`, `chart.js`           |
+| [`@gradhist/track-map-utils`](packages/track-map-utils/README.md)             | OpenLayers utilities: GeoJSON converters, `zoomToTrack`                             | `ol`, `kdbush`, `geokdbush` |
 
 ### Package development (monorepo)
 
@@ -71,9 +71,9 @@ The packages live under `packages/` and are linked into the app via npm workspac
 
 ```
 packages/
-  elevation-cursor-sync/   ← @la-rampa/elevation-cursor-sync
-  elevation-chart/         ← @la-rampa/elevation-chart
-  track-map-utils/         ← @la-rampa/track-map-utils
+  elevation-cursor-sync/   ← @gradhist/elevation-cursor-sync
+  elevation-chart/         ← @gradhist/elevation-chart
+  track-map-utils/         ← @gradhist/track-map-utils
 ```
 
 To build an individual package for publishing:

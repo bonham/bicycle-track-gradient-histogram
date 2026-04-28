@@ -1,4 +1,4 @@
-# @la-rampa/elevation-cursor-sync
+# @gradhist/elevation-cursor-sync
 
 Distance-based cursor synchronisation composable for Vue 3 track visualisation.
 
@@ -7,7 +7,7 @@ One `CursorSync` instance is shared between all components (map, elevation chart
 ## Installation
 
 ```bash
-npm install @la-rampa/elevation-cursor-sync
+npm install @gradhist/elevation-cursor-sync
 ```
 
 **Peer dependencies:** `vue ^3.5`
@@ -47,7 +47,7 @@ interface CursorSync {
 Creates a `CursorSync` instance.
 
 ```ts
-import { useCursorSync } from '@la-rampa/elevation-cursor-sync'
+import { useCursorSync } from '@gradhist/elevation-cursor-sync'
 
 // In App.vue setup:
 const cursor = useCursorSync(trackPoints) // trackPoints: ComputedRef<TrackPoint[]>
@@ -61,7 +61,7 @@ const cursor = useCursorSync(trackPoints) // trackPoints: ComputedRef<TrackPoint
 Maps the cursor index to a 1-based climb/interval ID, or `null` when outside all intervals.
 
 ```ts
-import { cursorToInterval } from '@la-rampa/elevation-cursor-sync'
+import { cursorToInterval } from '@gradhist/elevation-cursor-sync'
 
 // slopeIntervals: Ref<[startIdx, endIdx][]>
 const activeInterval = cursorToInterval(cursor, slopeIntervals)
@@ -73,8 +73,8 @@ const activeInterval = cursorToInterval(cursor, slopeIntervals)
 ```vue
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useCursorSync, cursorToInterval } from '@la-rampa/elevation-cursor-sync'
-import type { TrackPoint } from '@la-rampa/elevation-cursor-sync'
+import { useCursorSync, cursorToInterval } from '@gradhist/elevation-cursor-sync'
+import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 
 const trackPoints = computed<TrackPoint[]>(() =>
   mySegment.map((p) => ({

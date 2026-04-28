@@ -6,7 +6,7 @@ import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { Track2GeoJson } from '@/lib/Track2GeoJson'
 import { computeGradients } from '@/lib/computeGradients'
 import type { TrackEntry } from '@/types/TrackEntry'
-import type { TrackPoint } from '@la-rampa/elevation-cursor-sync'
+import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 import type { FeatureCollection, LineString } from 'geojson'
 
 const POINT_DISTANCE = 10

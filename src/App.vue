@@ -65,7 +65,7 @@ onUnmounted(() => {
   <div class="container py-0 px-3 mx-auto">
     <nav class="row navbar bg-body-tertiary mb-2">
       <div class="container-fluid">
-        <span class="fw-bold mb-0">La Rampa</span>
+        <span class="fw-bold mb-0">Gradient Histogram</span>
         <span v-if="tracks.length > 0" class="badge bg-secondary me-2">
           {{ tracks.length }} track{{ tracks.length > 1 ? 's' : '' }}
         </span>

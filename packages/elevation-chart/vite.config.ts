@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // Resolve sibling package from source during build
-      '@la-rampa/elevation-cursor-sync': resolve(__dirname, '../elevation-cursor-sync/src/index.ts'),
+      '@gradhist/elevation-cursor-sync': resolve(__dirname, '../elevation-cursor-sync/src/index.ts'),
     },
   },
   build: {
@@ -19,7 +19,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // Peer dependencies — not bundled
-      external: ['vue', 'chart.js', 'chart.js/auto', '@la-rampa/elevation-cursor-sync'],
+      external: ['vue', 'chart.js', 'chart.js/auto', '@gradhist/elevation-cursor-sync'],
       output: {
         globals: {
           vue: 'Vue',

@@ -22,13 +22,17 @@ type TData = { x: number; y: number }[]
 let chartInstance: Chart<TType, TData, string> | null = null
 
 /**
- * For a gradient threshold g, computes how many km of track have gradient >= g.
+ * For a gradient threshold g, computes how many km of track qualify:
+ * - g >= 0: counts segments with gradient >= g (uphill at or steeper than g)
+ * - g < 0:  counts segments with gradient <= g (downhill at or steeper than g)
  * Gradient values are in percent; each segment represents POINT_DISTANCE_M = 10 m.
  */
 function buildCurve(gradients: number[], gValues: number[]): TData {
   return gValues.map(g => ({
     x: g,
-    y: gradients.filter(v => v >= g).length * 10 / 1000,
+    y: g < 0
+      ? gradients.filter(v => v <= g).length * 10 / 1000
+      : gradients.filter(v => v >= g).length * 10 / 1000,
   }))
 }
 

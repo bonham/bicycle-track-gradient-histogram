@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { stretchInterval } from '@la-rampa/elevation-chart';
+import { stretchInterval } from '@gradhist/elevation-chart';
 import { SegmentTransformManager } from '@/lib/app/transformHelpers';
 import type { TrackSegmentWithDistance } from '@/lib/TrackData';
 import { TrackSegmentIndexed } from "@/lib/TrackData"

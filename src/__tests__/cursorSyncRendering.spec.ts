@@ -87,9 +87,9 @@ describe('App multi-track rendering', () => {
     ))
   })
 
-  it('renders the La Rampa title', () => {
+  it('renders the Gradient Histogram title', () => {
     const wrapper = mountApp()
-    expect(wrapper.text()).toContain('La Rampa')
+    expect(wrapper.text()).toContain('Gradient Histogram')
   })
 
   it('shows Upload button at all times', () => {

@@ -1,5 +1,5 @@
 import { TrackSegmentIndexed } from '@/lib/TrackData'
-import { stretchInterval } from '@la-rampa/elevation-chart'
+import { stretchInterval } from '@gradhist/elevation-chart'
 import throttle from 'lodash/throttle'
 
 type ZoomFunction = (centerIndex: number, factor: number) => void

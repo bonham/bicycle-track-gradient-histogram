@@ -1,4 +1,4 @@
-import type { TrackPoint } from '@la-rampa/elevation-cursor-sync'
+import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 
 const POINT_DISTANCE_M = 10
 

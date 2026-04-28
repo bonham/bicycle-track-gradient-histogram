@@ -20,9 +20,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(projectRootDir, 'src'),
-      '@la-rampa/elevation-cursor-sync': resolve(projectRootDir, 'packages/elevation-cursor-sync/src/index.ts'),
-      '@la-rampa/elevation-chart': resolve(projectRootDir, 'packages/elevation-chart/src/index.ts'),
-      '@la-rampa/track-map-utils': resolve(projectRootDir, 'packages/track-map-utils/src/index.ts'),
+      '@gradhist/elevation-cursor-sync': resolve(projectRootDir, 'packages/elevation-cursor-sync/src/index.ts'),
+      '@gradhist/elevation-chart': resolve(projectRootDir, 'packages/elevation-chart/src/index.ts'),
+      '@gradhist/track-map-utils': resolve(projectRootDir, 'packages/track-map-utils/src/index.ts'),
       '~bootstrap': resolve(__dirname, 'node_modules/bootstrap'),
       '~bootstrap-icons': resolve(__dirname, 'node_modules/bootstrap-icons')
     }

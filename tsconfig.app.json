@@ -9,9 +9,9 @@
 
     "paths": {
       "@/*": ["./src/*"],
-      "@la-rampa/elevation-cursor-sync": ["./packages/elevation-cursor-sync/src/index.ts"],
-      "@la-rampa/elevation-chart": ["./packages/elevation-chart/src/index.ts"],
-      "@la-rampa/track-map-utils": ["./packages/track-map-utils/src/index.ts"]
+      "@gradhist/elevation-cursor-sync": ["./packages/elevation-cursor-sync/src/index.ts"],
+      "@gradhist/elevation-chart": ["./packages/elevation-chart/src/index.ts"],
+      "@gradhist/track-map-utils": ["./packages/track-map-utils/src/index.ts"]
     },
     "noUncheckedIndexedAccess": false // remove this at one time ;-(
   }

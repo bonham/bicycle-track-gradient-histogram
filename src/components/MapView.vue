@@ -14,7 +14,7 @@ import { fromLonLat } from 'ol/proj';
 import Style from 'ol/style/Style';
 import Stroke from 'ol/style/Stroke';
 import type { FeatureLike } from 'ol/Feature';
-import { geojsonLineString2OpenLayersLineString, zoomToTrack } from '@la-rampa/track-map-utils';
+import { geojsonLineString2OpenLayersLineString, zoomToTrack } from '@gradhist/track-map-utils';
 import type { TrackEntry } from '@/types/TrackEntry';
 
 let map: Map;

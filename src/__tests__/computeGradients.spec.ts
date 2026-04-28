@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import { computeGradients } from '@/lib/computeGradients'
-import type { TrackPoint } from '@la-rampa/elevation-cursor-sync'
+import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 
 /**
  * Unit tests for computeGradients().

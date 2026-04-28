@@ -1,5 +1,5 @@
 import type { Feature, LineString } from 'geojson'
-import type { TrackPoint } from '@la-rampa/elevation-cursor-sync'
+import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 
 export interface TrackEntry {
   id: string

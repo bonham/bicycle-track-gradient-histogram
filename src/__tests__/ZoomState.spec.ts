@@ -1,4 +1,4 @@
-import { ZoomPanState } from "@la-rampa/elevation-chart";
+import { ZoomPanState } from "@gradhist/elevation-chart";
 import { beforeEach, describe, test, expect } from "vitest";
 
 describe("ZoomState", () => {
