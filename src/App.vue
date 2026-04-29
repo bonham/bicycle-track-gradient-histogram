@@ -104,10 +104,10 @@ onUnmounted(() => {
         <MapView :tracks="tracks" :zoom-reset-key="zoomResetKey" />
       </div>
     </DropField>
-    <div class="p-2 border-bottom">
+    <div class="py-3 border-bottom">
       <MultiElevationChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
     </div>
-    <div class="p-2">
+    <div class="py-3">
       <GradientHistogramChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
     </div>
   </div>
