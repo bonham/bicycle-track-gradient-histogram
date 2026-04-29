@@ -17,7 +17,7 @@ interface TrackSource {
 
 const trackSources = ref<TrackSource[]>([])
 const exampleTrackLoaded = ref(false)
-const interpolate = ref(true)
+const interpolate = ref(false)
 const zoomResetKey = ref(0)
 
 const tracks = computed(() =>
