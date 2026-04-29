@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watchEffect, ref } from 'vue';
+import { onMounted, watchEffect, ref, watch } from 'vue';
 import { Chart } from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import type { TrackEntry } from '@/types/TrackEntry';
@@ -16,6 +16,7 @@ Chart.register(zoomPlugin);
 
 const props = defineProps<{
   tracks: TrackEntry[]
+  zoomResetKey: number
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -86,18 +87,6 @@ watchEffect(
       chartInstance.options.plugins.legend.display = currentTracks.length > 1
     }
 
-    if (chartInstance.options.scales) {
-      chartInstance.options.scales['x'] = {
-        type: 'linear' as const,
-        title: { display: true, text: 'Gradient threshold (%)' },
-        min: gMin,
-        max: gMax,
-      }
-    }
-
-    chartInstance.resetZoom()
-    isZoomed.value = false
-
     if (firstRun) {
       requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
       firstRun = false
@@ -106,6 +95,28 @@ watchEffect(
     }
   },
   { flush: 'post' },
+)
+
+watch(
+  () => props.zoomResetKey,
+  () => {
+    if (!chartInstance) return
+    const currentTracks = props.tracks
+    const allGradients = currentTracks.flatMap(t => t.gradients.map(s => s.gradient))
+    const gMin = Math.floor(Math.min(...allGradients))
+    const gMax = Math.ceil(Math.max(...allGradients))
+    if (!isFinite(gMin) || !isFinite(gMax) || gMin > gMax) return
+    if (chartInstance.options.scales) {
+      chartInstance.options.scales['x'] = {
+        type: 'linear' as const,
+        title: { display: true, text: 'Gradient threshold (%)' },
+        min: gMin,
+        max: gMax,
+      }
+    }
+    chartInstance.resetZoom()
+    isZoomed.value = false
+  },
 )
 
 onMounted(() => {

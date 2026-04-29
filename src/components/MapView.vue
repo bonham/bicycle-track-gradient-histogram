@@ -22,7 +22,7 @@ const mapContainer = ref<HTMLDivElement | null>(null);
 
 const props = defineProps<{
   tracks: TrackEntry[];
-  zoomOnUpdate: boolean;
+  zoomResetKey: number;
 }>();
 
 const trackSource = new VectorSource()
@@ -67,11 +67,17 @@ onMounted(async () => {
         olFeature.set('trackColor', track.color)
         trackSource.addFeature(olFeature)
       })
-      if (props.zoomOnUpdate && newTracks.length > 0) {
+    },
+    { immediate: true },
+  )
+
+  watch(
+    () => props.zoomResetKey,
+    () => {
+      if (props.tracks.length > 0) {
         zoomToTrack(map, trackSource)
       }
     },
-    { immediate: true },
   )
 });
 </script>

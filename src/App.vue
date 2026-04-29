@@ -18,6 +18,7 @@ interface TrackSource {
 const trackSources = ref<TrackSource[]>([])
 const exampleTrackLoaded = ref(false)
 const interpolate = ref(true)
+const zoomResetKey = ref(0)
 
 const tracks = computed(() =>
   trackSources.value.map(s => featureCollectionToTrackEntry(s.fc, s.name, s.color, interpolate.value))
@@ -40,6 +41,7 @@ async function addFiles(files: FileList): Promise<void> {
       console.error(`Failed to load ${file.name}:`, err)
     }
   }
+  zoomResetKey.value++
 }
 
 function clearTracks(): void {
@@ -53,6 +55,7 @@ async function initialLoad(): Promise<void> {
   const fc = await response.json() as FeatureCollection<LineString>
   trackSources.value = [{ fc, name: 'kl', color: getNextColor() }]
   exampleTrackLoaded.value = true
+  zoomResetKey.value++
 }
 
 // Scroll hint
@@ -98,14 +101,14 @@ onUnmounted(() => {
     </nav>
     <DropField @files-dropped="addFiles">
       <div class=" border px-0 py-0">
-        <MapView :tracks="tracks" :zoom-on-update="true" />
+        <MapView :tracks="tracks" :zoom-reset-key="zoomResetKey" />
       </div>
     </DropField>
     <div class="p-2 border-bottom">
-      <MultiElevationChart :tracks="tracks" />
+      <MultiElevationChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
     </div>
     <div class="p-2">
-      <GradientHistogramChart :tracks="tracks" />
+      <GradientHistogramChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
     </div>
   </div>
   <div v-if="showScrollHint" class=" text-center row scroll-indicator">

@@ -23,21 +23,21 @@ let capturedHistTracks: unknown = undefined
 
 const MapViewStub = defineComponent({
   name: 'MapView',
-  props: { tracks: { default: () => [] }, zoomOnUpdate: { default: false } },
+  props: { tracks: { default: () => [] }, zoomResetKey: { default: 0 } },
   setup(props) { capturedMapTracks = props.tracks },
   template: '<div class="map-stub" />',
 })
 
 const MultiElevationChartStub = defineComponent({
   name: 'MultiElevationChart',
-  props: { tracks: { default: () => [] } },
+  props: { tracks: { default: () => [] }, zoomResetKey: { default: 0 } },
   setup(props) { capturedElevTracks = props.tracks },
   template: '<div class="elev-stub" />',
 })
 
 const GradientHistogramChartStub = defineComponent({
   name: 'GradientHistogramChart',
-  props: { tracks: { default: () => [] } },
+  props: { tracks: { default: () => [] }, zoomResetKey: { default: 0 } },
   setup(props) { capturedHistTracks = props.tracks },
   template: '<div class="hist-stub" />',
 })
