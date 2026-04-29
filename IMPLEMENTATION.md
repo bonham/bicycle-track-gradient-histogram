@@ -23,7 +23,7 @@ GPX/FIT file (user upload)
   readSingleFile()  — detects FIT vs GPX, parses, returns FeatureCollection<LineString>
        |
        v
-  GeoJSON FeatureCollection
+  GeoJSON FeatureCollection  ← stored in trackSources[] (raw data retained for live re-processing)
        |
        v
   GeoJsonLoader → TrackData (lat/lon/elevation points)
@@ -32,19 +32,20 @@ GPX/FIT file (user upload)
   extractFirstSegmentFirstTrack → first segment
        |
        v
-  makeEquidistantTrackAkima (Akima spline, 10 m spacing)
+  [interpolate ON]  makeEquidistantTrackAkima (Akima spline, 10 m spacing)
+  [interpolate OFF] addDistancesToSegment (haversine distances, raw GPS spacing)
        |
        v
   TrackSegmentIndexed (distance metadata attached)
        |
        v
-  computeGradients()  — per-segment gradient in %, length = N-1
+  computeGradients()  — per-segment { gradient %, distance m }, length = N-1
        |
        v
   TrackEntry { id, name, color, lineStringFeature, trackPoints, gradients }
        |
        v
-  tracks: TrackEntry[]   (reactive array in App.vue)
+  tracks: ComputedRef<TrackEntry[]>   (derived from trackSources + interpolate flag in App.vue)
        |
        ├── MapView              — one colored line per track on OpenLayers map
        ├── MultiElevationChart  — one elevation dataset per track (Chart.js, linear km axis)
@@ -53,7 +54,7 @@ GPX/FIT file (user upload)
 
 ## Application Structure
 
-**App.vue** is the central orchestrator. It holds the `tracks` array and coordinates the child components:
+**App.vue** is the central orchestrator. It holds `trackSources` (raw FeatureCollections) and an `interpolate` flag. `tracks` is a `computed` derived from both — toggling `interpolate` immediately reprocesses all loaded tracks without re-uploading files. Child components receive `tracks: TrackEntry[]` as a prop and redraw reactively.
 
 ```
 App.vue
@@ -65,8 +66,6 @@ App.vue
 
 State flows top-down via props. All components receive `tracks: TrackEntry[]`. There is no cursor sync between components in the multi-track view.
 
-The Pinia store (`trackStore.ts`) is defined but the app primarily uses local reactive state in App.vue.
-
 ## Central Data Model: `TrackEntry`
 
 ```typescript
@@ -75,21 +74,21 @@ interface TrackEntry {
   name: string // filename without extension
   color: string // hex from TRACK_COLORS palette
   lineStringFeature: Feature<LineString> // for MapView
-  trackPoints: TrackPoint[] // equidistant 10 m points (distance, elevation, lat, lon)
-  gradients: number[] // per-segment gradient in %; length = trackPoints.length - 1
+  trackPoints: TrackPoint[] // points with cumulative distance (10 m spacing when interpolated)
+  gradients: GradientSegment[] // per-segment { gradient: %, distance: m }; length = trackPoints.length - 1
 }
 ```
 
-`gradients` stores raw per-segment values rather than a pre-computed curve. This lets `GradientHistogramChart` derive a global x-axis range across all loaded tracks before computing each curve.
+`gradients` stores raw per-segment values (gradient % + actual segment distance in metres) rather than a pre-computed curve. This lets `GradientHistogramChart` derive a global x-axis range across all loaded tracks before computing each curve, and correctly weights km by actual distance for both interpolated and raw tracks.
 
 ## Source File Reference
 
 ### Entry Points
 
-| File          | Description                                                               |
-| ------------- | ------------------------------------------------------------------------- |
-| `src/main.ts` | Application bootstrap — creates Vue app with Pinia, imports Bootstrap CSS |
-| `src/App.vue` | Root component — holds `tracks[]`, handles file loading and clear action  |
+| File          | Description                                                                                                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts` | Application bootstrap — creates Vue app with Pinia, imports Bootstrap CSS                                                                                                           |
+| `src/App.vue` | Root component — holds `trackSources[]` (raw GeoJSON) and `interpolate` flag; `tracks` is a `computed` ref that re-derives `TrackEntry[]` on toggle; handles file loading and clear |
 
 ### Components (`src/components/`)
 
@@ -108,22 +107,22 @@ interface TrackEntry {
 | File                    | Description                                                                                                                                                                                                                                                                                                                                                                         |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TrackData.ts`          | Core data model. Types: `TrackPoint` (lat/lon/elevation), `TrackPointWithDistance` (adds distanceFromStart), `TrackSegment`, `TrackSegmentWithDistance`. `TrackData` manages multiple segments. `TrackSegmentIndexed` wraps a fixed-distance segment with virtual/internal index distinction, `slice`/`sliceSegment` for range extraction, and a `zoom(midpoint, factor)` function. |
-| `InterpolateSegment.ts` | Resamples a track to equidistant points using Akima spline interpolation (via `commons-math-interpolation`)                                                                                                                                                                                                                                                                         |
+| `InterpolateSegment.ts` | `makeEquidistantTrackAkima` — resamples a track to equidistant 10 m points using Akima spline interpolation. `addDistancesToSegment` — attaches cumulative haversine distances to raw GPS points without resampling (used when interpolation is disabled).                                                                                                                          |
 | `GeoJsonLoader.ts`      | Converts GeoJSON FeatureCollections into internal `TrackData` objects                                                                                                                                                                                                                                                                                                               |
 | `Gpx2Track.ts`          | Parses GPX XML into track data using `xpath` and `@xmldom/xmldom`                                                                                                                                                                                                                                                                                                                   |
 | `Track2GeoJson.ts`      | Converts `TrackSegment` back to GeoJSON `LineString` features                                                                                                                                                                                                                                                                                                                       |
 | `haversine.ts`          | Great-circle distance calculation between coordinates                                                                                                                                                                                                                                                                                                                               |
-| `computeGradients.ts`   | Pure function — computes per-segment gradient (%) from equidistant `TrackPoint[]`                                                                                                                                                                                                                                                                                                   |
+| `computeGradients.ts`   | Pure function — computes per-segment `GradientSegment[]` (`{ gradient: %, distance: m }`) from `TrackPoint[]` using actual inter-point distances; skips zero-distance segments                                                                                                                                                                                                      |
 | `typeHelpers.ts`        | TypeScript utility type definitions                                                                                                                                                                                                                                                                                                                                                 |
 
 ### Application Helpers (`src/lib/app/`)
 
-| File                               | Description                                                                                                    |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `gpx2GeoJson.ts`                   | Wrapper — converts a GPX string to a GeoJSON FeatureCollection                                                 |
-| `extractFirstSegmentFirstTrack.ts` | Extracts the first segment from the first track in a `TrackData` array                                         |
-| `loadSingleFile.ts`                | Full pipeline: `File → TrackEntry`. Also exports `featureCollectionToTrackEntry` for loading GeoJSON directly. |
-| `transformHelpers.ts`              | `SegmentTransformManager` — manages zoom/pan viewport state (used by elevation chart package)                  |
+| File                               | Description                                                                                                                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gpx2GeoJson.ts`                   | Wrapper — converts a GPX string to a GeoJSON FeatureCollection                                                                                                                      |
+| `extractFirstSegmentFirstTrack.ts` | Extracts the first segment from the first track in a `TrackData` array                                                                                                              |
+| `loadSingleFile.ts`                | Full pipeline: `File → TrackEntry`. Exports `featureCollectionToTrackEntry` (accepts `interpolate` flag) and `readFileToSource` (returns raw FC + name for App.vue's source store). |
+| `transformHelpers.ts`              | `SegmentTransformManager` — manages zoom/pan viewport state (used by elevation chart package)                                                                                       |
 
 ### Types (`src/types/`)
 
@@ -183,42 +182,46 @@ interface TrackEntry {
 
 ### Tests (`src/__tests__/`)
 
-| File                          | Description                                      |
-| ----------------------------- | ------------------------------------------------ |
-| `App.spec.ts`                 | App component smoke test                         |
-| `TrackData.spec.ts`           | TrackData and TrackSegmentIndexed unit tests     |
-| `Track2GeoJson.spec.ts`       | GeoJSON conversion tests                         |
-| `TpIndex.spec.ts`             | TrackPointIndex spatial query tests              |
-| `ZoomState.spec.ts`           | Zoom state calculation tests                     |
-| `transformHelpers.spec.ts`    | Segment transformation tests                     |
-| `detectEqualElements.spec.ts` | Array duplicate detection tests                  |
-| `computeGradients.spec.ts`    | Gradient computation unit tests                  |
-| `appRendering.spec.ts`        | App multi-track rendering and UI behavior tests  |
+| File                          | Description                                     |
+| ----------------------------- | ----------------------------------------------- |
+| `App.spec.ts`                 | App component smoke test                        |
+| `TrackData.spec.ts`           | TrackData and TrackSegmentIndexed unit tests    |
+| `Track2GeoJson.spec.ts`       | GeoJSON conversion tests                        |
+| `TpIndex.spec.ts`             | TrackPointIndex spatial query tests             |
+| `ZoomState.spec.ts`           | Zoom state calculation tests                    |
+| `transformHelpers.spec.ts`    | Segment transformation tests                    |
+| `detectEqualElements.spec.ts` | Array duplicate detection tests                 |
+| `computeGradients.spec.ts`    | Gradient computation unit tests                 |
+| `appRendering.spec.ts`        | App multi-track rendering and UI behavior tests |
 
 ## Key Algorithms
 
 ### Gradient Histogram (`computeGradients.ts` + `GradientHistogramChart.vue`)
 
-The equidistant 10 m track points allow a simple per-segment gradient calculation:
+`computeGradients` calculates per-segment gradient using the actual distance between consecutive track points:
 
 ```
-gradient_i = (elevation[i+1] - elevation[i]) / 10 * 100   (percent)
+gradient_i = (elevation[i+1] - elevation[i]) / (distance[i+1] - distance[i]) * 100   (percent)
 ```
 
-`GradientHistogramChart` then builds a _gradient survival curve_ across all loaded tracks:
+Segments with zero distance (duplicate GPS points) are skipped. Each segment carries its actual length in metres as `GradientSegment.distance`.
+
+`GradientHistogramChart` builds a _gradient survival curve_ across all loaded tracks:
 
 1. Collect all gradient values; derive global `gMin` and `gMax`.
 2. Generate x-axis values from `gMin` to `gMax` in 0.5 % steps.
-3. For each track and each threshold `g`:
-   - `g >= 0`: `km = count(gradients >= g) × 10 m / 1000`
-   - `g < 0`:  `km = count(gradients <= g) × 10 m / 1000`
+3. For each track and each threshold `g`, sum the actual segment distances:
+   - `g >= 0`: `km = Σ distance of segments where gradient ≥ g / 1000`
+   - `g < 0`: `km = Σ distance of segments where gradient ≤ g / 1000`
 4. Plot each track as a line on a shared axis.
 
-The resulting curve is monotonically non-increasing — as the threshold rises, fewer segments qualify.
+Weighting by actual distance (rather than counting segments × fixed interval) ensures the chart is correct whether interpolation is on or off.
 
 ### Akima Spline Interpolation (`InterpolateSegment.ts`)
 
-Raw GPS tracks have unevenly spaced points. The app resamples them to equidistant 10 m intervals using Akima cubic spline interpolation (via `commons-math-interpolation`). Three separate splines are created for latitude, longitude, and elevation as functions of cumulative distance. This produces smooth elevation curves and consistent 10 m spacing needed for the gradient computation.
+Raw GPS tracks have unevenly spaced points. When interpolation is enabled (default), the app resamples tracks to equidistant 10 m intervals using Akima cubic spline interpolation (via `commons-math-interpolation`). Three separate splines are created for latitude, longitude, and elevation as functions of cumulative distance. This produces smooth elevation curves and consistent point spacing.
+
+When interpolation is disabled, `addDistancesToSegment` attaches cumulative haversine distances to the raw GPS points without resampling. Gradients are then computed from the actual GPS spacing, which may be noisier but reflects the original recorded data.
 
 ### Multi-Track Color Assignment
 

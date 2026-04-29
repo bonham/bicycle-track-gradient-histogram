@@ -9,6 +9,7 @@ Gradient Histogram is a Progressive Web App for cyclists who want to analyze the
 - **Interactive map** — all tracks displayed on OpenStreetMap (via OpenLayers), each in a distinct color
 - **Elevation profile chart** — zoomable and pannable distance/elevation diagram showing all loaded tracks
 - **Gradient histogram** — for each track, a curve showing how many km have a gradient at or above a given threshold; multiple curves on one chart for easy comparison
+- **Interpolation toggle** — navbar switch to enable/disable Akima spline resampling; toggling instantly reprocesses all loaded tracks without re-uploading files
 - **Clear button** — remove all loaded tracks in one click
 
 ## Gradient Histogram Explained
@@ -23,7 +24,11 @@ The Y-value is computed differently depending on the sign of the threshold:
 - **Threshold ≥ 0 %** — counts segments where `gradient ≥ threshold` (uphill at least as steep as the threshold)
 - **Threshold < 0 %** — counts segments where `gradient ≤ threshold` (downhill at least as steep as the threshold)
 
-The curve is monotonically non-increasing: at threshold 0 % you see the total uphill + flat km; at 10 % only the steep climbs remain. For negative thresholds, at −5 % you see all segments descending at 5 % or more. Comparing multiple tracks on the same chart immediately shows which route has more climbing or descending.
+Each qualifying segment contributes its actual length in km to the total, so the chart is correct whether interpolation is on or off. The curve is monotonically non-increasing: at threshold 0 % you see the total uphill + flat km; at 10 % only the steep climbs remain. Comparing multiple tracks on the same chart immediately shows which route has more climbing or descending.
+
+### Interpolation toggle
+
+When **Interpolate** is ON (default), GPS tracks are resampled to equidistant 10 m points via Akima spline interpolation before gradient computation. This smooths out GPS noise and gives consistent spacing. When **OFF**, gradients are computed directly from the raw GPS points using their actual haversine distances. The toggle applies instantly to all currently loaded tracks — no re-upload needed.
 
 ## Getting Started
 

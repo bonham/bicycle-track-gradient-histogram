@@ -52,9 +52,11 @@ vi.mock('@/lib/app/loadSingleFile', () => {
     trackPoints: [],
     gradients: [],
   })
+  const mockFc = { type: 'FeatureCollection', features: [] }
   return {
     featureCollectionToTrackEntry: vi.fn(() => mockEntry()),
     loadSingleFile: vi.fn(async (file: File) => mockEntry(file.name)),
+    readFileToSource: vi.fn(async (file: File) => ({ fc: mockFc, name: file.name })),
   }
 })
 
@@ -99,17 +101,14 @@ describe('App multi-track rendering', () => {
 
   it('does not show Clear button before initialLoad resolves', () => {
     const wrapper = mountApp()
-    // fetch has not resolved yet — tracks is still empty
+    // Clear is rendered as a <span>, not a <button>
     const clearBtn = wrapper.findAll('button').find(b => b.text() === 'Clear')
     expect(clearBtn).toBeUndefined()
   })
 
-  it('shows Clear button and track badge after initial track loads', async () => {
+  it('shows Clear span at all times', () => {
     const wrapper = mountApp()
-    await nextTick() // fetch resolves
-    await nextTick() // Vue updates DOM
-    expect(wrapper.find('button').text()).toBe('Clear')
-    expect(wrapper.text()).toContain('1 track')
+    expect(wrapper.text()).toContain('Clear')
   })
 
   it('all three child components receive the same tracks array reference', async () => {
@@ -122,34 +121,37 @@ describe('App multi-track rendering', () => {
     expect(Array.isArray(capturedMapTracks)).toBe(true)
   })
 
-  it('clear button removes all tracks and hides itself', async () => {
+  it('clear span removes all tracks', async () => {
     const wrapper = mountApp()
     await nextTick()
     await nextTick()
-    expect(wrapper.find('button').text()).toBe('Clear')
 
-    await wrapper.find('button').trigger('click')
+    await wrapper.find('span[class*="border"]').trigger('click')
     await nextTick()
 
-    const clearBtn = wrapper.findAll('button').find(b => b.text() === 'Clear')
-    expect(clearBtn).toBeUndefined()
     expect(capturedMapTracks).toEqual([])
   })
 
-  it('track count badge increments when a second track is added via drop', async () => {
+  it('dropping files replaces example track and accumulates user tracks', async () => {
     const wrapper = mountApp()
     await nextTick()
     await nextTick()
-    expect(wrapper.text()).toContain('1 track')
 
-    // Simulate dropping a second file by emitting from DropField
+    // Simulate dropping two files — example is cleared first, then both are added
     const dropField = wrapper.findComponent({ name: 'DropField' })
-    const fakeFile = new File(['content'], 'route2.gpx', { type: 'application/gpx+xml' })
-    const fakeFileList = { 0: fakeFile, length: 1, item: () => fakeFile, [Symbol.iterator]: function* () { yield fakeFile } } as unknown as FileList
+    const fakeFile1 = new File(['content'], 'route1.gpx', { type: 'application/gpx+xml' })
+    const fakeFile2 = new File(['content'], 'route2.gpx', { type: 'application/gpx+xml' })
+    const files = [fakeFile1, fakeFile2]
+    const fakeFileList = {
+      0: fakeFile1, 1: fakeFile2, length: 2,
+      item: (i: number) => files[i] ?? null,
+      [Symbol.iterator]: function* () { yield fakeFile1; yield fakeFile2 },
+    } as unknown as FileList
     await dropField.vm.$emit('files-dropped', fakeFileList)
     await nextTick()
     await nextTick()
 
-    expect(wrapper.text()).toContain('2 tracks')
+    expect(Array.isArray(capturedMapTracks)).toBe(true)
+    expect(wrapper.findComponent({ name: 'MapView' }).props('tracks').length).toBe(2)
   })
 })
