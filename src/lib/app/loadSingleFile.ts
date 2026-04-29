@@ -1,7 +1,7 @@
 import { readSingleFile } from '@/lib/fileReader/readDroppedFile'
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader'
 import { extractFirstSegmentFirstTrack } from '@/lib/app/extractFirstSegmentFirstTrack'
-import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment'
+import { makeEquidistantTrackAkima, addDistancesToSegment } from '@/lib/InterpolateSegment'
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { Track2GeoJson } from '@/lib/Track2GeoJson'
 import { computeGradients } from '@/lib/computeGradients'
@@ -19,11 +19,12 @@ export function featureCollectionToTrackEntry(
   fc: FeatureCollection<LineString>,
   name: string,
   color: string,
+  interpolate: boolean = true,
 ): TrackEntry {
   const tracks = GeoJsonLoader.loadFromGeoJson(fc)
   const segment = extractFirstSegmentFirstTrack(tracks)
-  const equidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
-  const indexed = new TrackSegmentIndexed(equidistant, POINT_DISTANCE)
+  const source = interpolate ? makeEquidistantTrackAkima(segment, POINT_DISTANCE) : addDistancesToSegment(segment)
+  const indexed = new TrackSegmentIndexed(source, POINT_DISTANCE)
 
   const trackPoints: TrackPoint[] = indexed.getSegment().map(p => ({
     distance: p.distanceFromStart,
@@ -48,8 +49,18 @@ export function featureCollectionToTrackEntry(
 /**
  * Full pipeline: File → TrackEntry.
  */
-export async function loadSingleFile(file: File, color: string): Promise<TrackEntry> {
+export async function loadSingleFile(file: File, color: string, interpolate: boolean = true): Promise<TrackEntry> {
   const fc = await readSingleFile(file)
   const name = file.name.replace(/\.(gpx|fit)$/i, '')
-  return featureCollectionToTrackEntry(fc, name, color)
+  return featureCollectionToTrackEntry(fc, name, color, interpolate)
+}
+
+/**
+ * Reads a file and returns the raw FeatureCollection + display name.
+ * Used by App.vue to store source data for live re-processing on toggle.
+ */
+export async function readFileToSource(file: File): Promise<{ fc: FeatureCollection<LineString>, name: string }> {
+  const fc = await readSingleFile(file)
+  const name = file.name.replace(/\.(gpx|fit)$/i, '')
+  return { fc, name }
 }

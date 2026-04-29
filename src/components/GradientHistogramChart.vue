@@ -10,6 +10,7 @@ import { onMounted, watchEffect, ref } from 'vue';
 import { Chart } from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import type { TrackEntry } from '@/types/TrackEntry';
+import type { GradientSegment } from '@/lib/computeGradients';
 
 Chart.register(zoomPlugin);
 
@@ -34,14 +35,14 @@ function resetZoom() {
  * For a gradient threshold g, computes how many km of track qualify:
  * - g >= 0: counts segments with gradient >= g (uphill at or steeper than g)
  * - g < 0:  counts segments with gradient <= g (downhill at or steeper than g)
- * Gradient values are in percent; each segment represents POINT_DISTANCE_M = 10 m.
+ * Weights by actual segment distance — correct for both interpolated and raw tracks.
  */
-function buildCurve(gradients: number[], gValues: number[]): TData {
+function buildCurve(gradients: GradientSegment[], gValues: number[]): TData {
   return gValues.map(g => ({
     x: g,
     y: g < 0
-      ? gradients.filter(v => v <= g).length * 10 / 1000
-      : gradients.filter(v => v >= g).length * 10 / 1000,
+      ? gradients.filter(s => s.gradient <= g).reduce((sum, s) => sum + s.distance, 0) / 1000
+      : gradients.filter(s => s.gradient >= g).reduce((sum, s) => sum + s.distance, 0) / 1000,
   }))
 }
 
@@ -61,9 +62,11 @@ watchEffect(
     }
 
     // Global gradient range across all tracks
-    const allGradients = currentTracks.flatMap(t => t.gradients)
+    const allGradients = currentTracks.flatMap(t => t.gradients.map(s => s.gradient))
     const gMin = Math.floor(Math.min(...allGradients))
     const gMax = Math.ceil(Math.max(...allGradients))
+
+    if (!isFinite(gMin) || !isFinite(gMax) || gMin > gMax) return
 
     // Build x-axis values at 0.5% steps
     const gValues: number[] = []
@@ -158,10 +161,12 @@ onMounted(() => {
   width: 100%;
   height: 250px;
 }
+
 canvas {
   width: 100%;
   height: 100%;
 }
+
 .reset-zoom-btn {
   position: absolute;
   top: 6px;
@@ -173,6 +178,7 @@ canvas {
   border-radius: 4px;
   cursor: pointer;
 }
+
 .reset-zoom-btn:hover {
   background: #fff;
 }

@@ -4,29 +4,38 @@ import MultiElevationChart from '@/components/MultiElevationChart.vue';
 import GradientHistogramChart from '@/components/GradientHistogramChart.vue';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
-import { ref, onMounted, onUnmounted } from 'vue';
-import { loadSingleFile, featureCollectionToTrackEntry } from '@/lib/app/loadSingleFile';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { featureCollectionToTrackEntry, readFileToSource } from '@/lib/app/loadSingleFile';
 import { TRACK_COLORS } from '@/types/TrackEntry';
-import type { TrackEntry } from '@/types/TrackEntry';
 import type { FeatureCollection, LineString } from 'geojson';
 
-const tracks = ref<TrackEntry[]>([])
+interface TrackSource {
+  fc: FeatureCollection<LineString>
+  name: string
+  color: string
+}
+
+const trackSources = ref<TrackSource[]>([])
 const exampleTrackLoaded = ref(false)
+const interpolate = ref(true)
+
+const tracks = computed(() =>
+  trackSources.value.map(s => featureCollectionToTrackEntry(s.fc, s.name, s.color, interpolate.value))
+)
 
 function getNextColor(): string {
-  return TRACK_COLORS[tracks.value.length % TRACK_COLORS.length]!
+  return TRACK_COLORS[trackSources.value.length % TRACK_COLORS.length]!
 }
 
 async function addFiles(files: FileList): Promise<void> {
-  const clearExample = exampleTrackLoaded.value
-  if (clearExample) {
-    tracks.value = []
+  if (exampleTrackLoaded.value) {
+    trackSources.value = []
     exampleTrackLoaded.value = false
   }
   for (const file of Array.from(files)) {
     try {
-      const entry = await loadSingleFile(file, getNextColor())
-      tracks.value = [...tracks.value, entry]
+      const { fc, name } = await readFileToSource(file)
+      trackSources.value = [...trackSources.value, { fc, name, color: getNextColor() }]
     } catch (err) {
       console.error(`Failed to load ${file.name}:`, err)
     }
@@ -34,16 +43,15 @@ async function addFiles(files: FileList): Promise<void> {
 }
 
 function clearTracks(): void {
-  tracks.value = []
+  trackSources.value = []
 }
 
 initialLoad().catch(err => console.error('Error in initial load:', err))
 
 async function initialLoad(): Promise<void> {
   const response = await fetch('./kl.json')
-  const geojson = await response.json() as FeatureCollection<LineString>
-  const entry = featureCollectionToTrackEntry(geojson, 'kl', getNextColor())
-  tracks.value = [entry]
+  const fc = await response.json() as FeatureCollection<LineString>
+  trackSources.value = [{ fc, name: 'kl', color: getNextColor() }]
   exampleTrackLoaded.value = true
 }
 
@@ -73,7 +81,11 @@ onUnmounted(() => {
     <nav class="navbar mbb-0">
       <div class="container-fluid">
         <span class="fw-bold mb-0">Gradient Histogram</span>
-        <div class="d-flex flex-row gap-2">
+        <div class="d-flex flex-row gap-2 align-items-center">
+          <div class="form-check form-switch mb-0 d-flex align-items-center gap-1">
+            <input class="form-check-input" type="checkbox" role="switch" id="interpolateToggle" v-model="interpolate">
+            <label class="form-check-label" for="interpolateToggle">Interpolate</label>
+          </div>
           <span class="border border-1 rounded px-2 py-1" @click="clearTracks">Clear</span>
           <DropPanel @files-dropped="addFiles">
             <label for="input" class="border border-1 rounded px-2 py-1 d-flex flex-row">

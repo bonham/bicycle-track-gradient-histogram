@@ -5,8 +5,8 @@ import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 /**
  * Unit tests for computeGradients().
  *
- * The function computes per-segment gradient in percent from equidistant
- * track points (10 m apart). Result length is always trackPoints.length - 1.
+ * The function computes per-segment gradient in percent using actual
+ * distanceFromStart differences. Result length is always trackPoints.length - 1.
  */
 
 function makePoints(elevations: number[]): TrackPoint[] {
@@ -37,42 +37,43 @@ describe('computeGradients', () => {
 
   test('flat segment yields 0% gradient', () => {
     const result = computeGradients(makePoints([200, 200]))
-    expect(result[0]).toBe(0)
+    expect(result[0]!.gradient).toBe(0)
   })
 
   test('ascending 1 m over 10 m yields 10% gradient', () => {
     const result = computeGradients(makePoints([100, 101]))
-    expect(result[0]).toBeCloseTo(10)
+    expect(result[0]!.gradient).toBeCloseTo(10)
   })
 
   test('descending 1 m over 10 m yields -10% gradient', () => {
     const result = computeGradients(makePoints([100, 99]))
-    expect(result[0]).toBeCloseTo(-10)
+    expect(result[0]!.gradient).toBeCloseTo(-10)
   })
 
   test('steep ascent: 2 m over 10 m yields 20%', () => {
     const result = computeGradients(makePoints([50, 52]))
-    expect(result[0]).toBeCloseTo(20)
+    expect(result[0]!.gradient).toBeCloseTo(20)
   })
 
   test('computes each segment independently', () => {
     // flat → ascent → descent → flat
     const result = computeGradients(makePoints([100, 100, 101, 100, 100]))
-    expect(result[0]).toBeCloseTo(0)   // flat
-    expect(result[1]).toBeCloseTo(10)  // +1 m over 10 m = 10%
-    expect(result[2]).toBeCloseTo(-10) // −1 m over 10 m = −10%
-    expect(result[3]).toBeCloseTo(0)   // flat
+    expect(result[0]!.gradient).toBeCloseTo(0)   // flat
+    expect(result[1]!.gradient).toBeCloseTo(10)  // +1 m over 10 m = 10%
+    expect(result[2]!.gradient).toBeCloseTo(-10) // −1 m over 10 m = −10%
+    expect(result[3]!.gradient).toBeCloseTo(0)   // flat
+  })
+
+  test('each segment carries the correct distance', () => {
+    const result = computeGradients(makePoints([100, 101, 102]))
+    expect(result[0]!.distance).toBeCloseTo(10)
+    expect(result[1]!.distance).toBeCloseTo(10)
   })
 
   /**
    * Synthetic scenario: 2 km at exactly -1% grade (10m steps, -0.1 m each).
-   * computeGradients should return -1 for every segment.
-   * Counting segments in the [-1, -0.5) bin yields 200 segments × 10 m = 2.0 km.
-   *
-   * Note: when a real GPX with 100m-spaced points is processed through the
-   * Akima interpolation pipeline, ~0.2 km near segment boundaries will deviate
-   * from -1% due to spline smoothing — so the chart may show ~1.8 km instead
-   * of 2 km. That is expected behaviour, not a formula bug.
+   * computeGradients should return gradient=-1 for every segment.
+   * Summing distances for segments in [-1, -0.5) yields 2.0 km.
    */
   test('2 km at -1% grade: all gradients are -1%, histogram bin contains 2 km', () => {
     // 201 points × 10 m = 2000 m, elevation drops 0.1 m per step (-1%)
@@ -81,11 +82,12 @@ describe('computeGradients', () => {
     const gradients = computeGradients(points)
 
     expect(gradients).toHaveLength(200)
-    gradients.forEach(g => expect(g).toBeCloseTo(-1, 5))
+    gradients.forEach(s => expect(s.gradient).toBeCloseTo(-1, 5))
 
-    // Simulate histogram bin [-1, -0.5): round to 0.1% precision first to
-    // avoid floating-point values like -1.0000000000001 slipping below the boundary.
-    const kmInBin = gradients.filter(v => Math.round(v * 10) / 10 === -1.0).length * 10 / 1000
+    // Simulate histogram bin [-1, -0.5): weight by actual distance
+    const kmInBin = gradients
+      .filter(s => Math.round(s.gradient * 10) / 10 === -1.0)
+      .reduce((sum, s) => sum + s.distance, 0) / 1000
     expect(kmInBin).toBeCloseTo(2.0)
   })
 
@@ -94,8 +96,8 @@ describe('computeGradients', () => {
     const gradients = computeGradients(points)
     // Total gain: +2 +2 -1 +2 = +5 m; each pos segment * 10 m / 100 = gradient%
     const totalGainM = gradients
-      .filter(g => g > 0)
-      .reduce((acc, g) => acc + (g / 100) * 10, 0)
+      .filter(s => s.gradient > 0)
+      .reduce((acc, s) => acc + (s.gradient / 100) * s.distance, 0)
     expect(totalGainM).toBeCloseTo(6) // 2+2+2 = 6 m of ascending segments
   })
 

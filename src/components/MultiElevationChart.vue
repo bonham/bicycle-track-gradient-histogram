@@ -53,6 +53,8 @@ watchEffect(
       borderColor: track.color,
       fill: false,
       pointStyle: false as const,
+      pointRadius: 5,
+      pointBorderColor: '#ff0000',
       label: track.name,
     }))
 
@@ -127,7 +129,7 @@ onMounted(() => {
       },
       elements: {
         point: { radius: 0 },
-        line: { tension: 0.2, borderWidth: 2 },
+        line: { tension: 0.002, borderWidth: 2 },
       },
     },
   })
@@ -226,6 +228,7 @@ function getChartX(canvas: HTMLCanvasElement, clientX: number): number | undefin
   width: 100%;
   height: 250px;
 }
+
 canvas {
   width: 100%;
   height: 100%;
