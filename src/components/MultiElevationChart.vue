@@ -99,12 +99,9 @@ watch(
         t.trackPoints.length > 0 ? t.trackPoints[t.trackPoints.length - 1]!.distance / 1000 : 0,
       ),
     )
-    const allElevations = currentTracks.flatMap(t => t.trackPoints.map(p => p.elevation))
-    const minY = Math.min(...allElevations)
-    const maxY = Math.max(...allElevations)
     if (chartInstance.options.scales) {
       chartInstance.options.scales['x'] = { ...getScaleX(0, maxKm) }
-      chartInstance.options.scales['y'] = { ...getScaleY(minY, maxY) }
+      chartInstance.options.scales['y'] = { title: { display: true, text: 'Elevation (m)' } }
     }
     chartInstance.resetZoom()
     isZoomed.value = false
