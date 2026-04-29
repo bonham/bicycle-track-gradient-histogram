@@ -69,35 +69,34 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="container py-0 px-3 mx-auto">
-    <nav class="row navbar bg-body-tertiary mb-2">
+  <div class="container px-0 mx-auto border bg-light">
+    <nav class="navbar mbb-0">
       <div class="container-fluid">
         <span class="fw-bold mb-0">Gradient Histogram</span>
-        <span v-if="tracks.length > 0" class="badge bg-secondary me-2">
-          {{ tracks.length }} track{{ tracks.length > 1 ? 's' : '' }}
-        </span>
-        <button v-if="tracks.length > 0" class="btn btn-outline-secondary btn-sm me-2"
-          @click="clearTracks">Clear</button>
-        <DropPanel @files-dropped="addFiles">
-          <label for="input" class="border border-1 rounded px-2 py-1 d-flex flex-row">
-            Upload
-          </label>
-        </DropPanel>
+        <div class="d-flex flex-row gap-2">
+          <span class="border border-1 rounded px-2 py-1" @click="clearTracks">Clear</span>
+          <DropPanel @files-dropped="addFiles">
+            <label for="input" class="border border-1 rounded px-2 py-1 d-flex flex-row">
+              Upload
+            </label>
+          </DropPanel>
+        </div>
       </div>
+
     </nav>
     <DropField @files-dropped="addFiles">
-      <div class="row border py-1">
+      <div class=" border px-0 py-0">
         <MapView :tracks="tracks" :zoom-on-update="true" />
       </div>
     </DropField>
-    <div class="row my-3 py-3 border">
+    <div class="p-2 border-bottom">
       <MultiElevationChart :tracks="tracks" />
     </div>
-    <div class="row my-3 py-3 border">
+    <div class="p-2">
       <GradientHistogramChart :tracks="tracks" />
     </div>
   </div>
-  <div v-if="showScrollHint" class="row text-center scroll-indicator">
+  <div v-if="showScrollHint" class=" text-center row scroll-indicator">
     <div class="col-3"></div>
     <i class="col-1 bi bi-caret-down-fill animate-bounce"></i>
     <div class="col-4"></div>
@@ -119,6 +118,15 @@ onUnmounted(() => {
   opacity: 0.5;
   pointer-events: none;
 }
+
+.navbar {
+  background-color: #f8f5e8 !important;
+}
+
+.container {
+  background-color: white;
+}
+
 
 @keyframes bounce {
 
