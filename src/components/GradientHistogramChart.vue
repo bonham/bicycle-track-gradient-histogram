@@ -1,10 +1,5 @@
 <template>
   <div class="chart-wrapper px-1">
-    <div class="chart-controls">
-      <label class="log-scale-label">
-        <input type="checkbox" v-model="useLogScale" /> Log Y
-      </label>
-    </div>
     <div class="chart-container">
       <canvas ref="canvasRef" @dblclick="resetZoom"></canvas>
       <button v-if="isZoomed" class="reset-zoom-btn" @click="resetZoom">Reset zoom</button>
@@ -24,11 +19,11 @@ Chart.register(zoomPlugin);
 const props = defineProps<{
   tracks: TrackEntry[]
   zoomResetKey: number
+  useLogScale: boolean
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const isZoomed = ref(false)
-const useLogScale = ref(false)
 
 type TType = 'line'
 type TData = { x: number; y: number }[]
@@ -41,12 +36,23 @@ function resetZoom() {
 }
 
 function buildCurve(gradients: GradientSegment[], gValues: number[]): TData {
-  return gValues.map(g => ({
-    x: g,
-    y: g < 0
-      ? gradients.filter(s => s.gradient <= g).reduce((sum, s) => sum + s.distance, 0) / 1000
-      : gradients.filter(s => s.gradient >= g).reduce((sum, s) => sum + s.distance, 0) / 1000,
-  }))
+  const sorted = [...gradients].sort((a, b) => a.gradient - b.gradient)
+  const prefix = new Float64Array(sorted.length + 1)
+  for (let i = 0; i < sorted.length; i++) prefix[i + 1] = prefix[i] + sorted[i].distance
+  const total = prefix[sorted.length]
+
+  return gValues.map(g => {
+    let lo = 0, hi = sorted.length
+    if (g < 0) {
+      // upper bound: first index where gradient > g
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (sorted[mid].gradient <= g) lo = mid + 1; else hi = mid }
+      return { x: g, y: prefix[lo] / 1000 }
+    } else {
+      // lower bound: first index where gradient >= g
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (sorted[mid].gradient < g) lo = mid + 1; else hi = mid }
+      return { x: g, y: (total - prefix[lo]) / 1000 }
+    }
+  })
 }
 
 function buildTrackGValues(track: TrackEntry): number[] {
@@ -62,12 +68,12 @@ function buildTrackGValues(track: TrackEntry): number[] {
 
 function applyYScale() {
   if (!chartInstance?.options?.scales?.y) return
-  chartInstance.options.scales.y.type = useLogScale.value ? 'logarithmic' : 'linear'
-  chartInstance.options.scales.y.min = useLogScale.value ? undefined : 0
+  chartInstance.options.scales.y.type = props.useLogScale ? 'logarithmic' : 'linear'
+  chartInstance.options.scales.y.min = props.useLogScale ? undefined : 0
   chartInstance.update('none')
 }
 
-watch(useLogScale, applyYScale)
+watch(() => props.useLogScale, applyYScale)
 
 let firstRun = true
 watchEffect(
@@ -94,7 +100,7 @@ watchEffect(
     })
 
     if (chartInstance.options.plugins?.legend) {
-      chartInstance.options.plugins.legend.display = true
+      chartInstance.options.plugins.legend.display = false
     }
 
     if (firstRun) {
@@ -141,14 +147,13 @@ onMounted(() => {
           title: { display: true, text: 'Gradient threshold (%)' },
         },
         y: {
-          type: 'linear',
+          type: 'logarithmic',
           title: { display: true, text: 'km above threshold' },
-          min: 0,
         },
       },
       plugins: {
         tooltip: { enabled: false },
-        legend: { display: true },
+        legend: { display: false },
         zoom: {
           zoom: {
             wheel: { enabled: true },
@@ -176,18 +181,6 @@ onMounted(() => {
 .chart-wrapper {
   position: relative;
   width: 100%;
-}
-
-.chart-controls {
-  display: flex;
-  justify-content: flex-end;
-  padding: 2px 4px;
-}
-
-.log-scale-label {
-  font-size: 0.8rem;
-  cursor: pointer;
-  user-select: none;
 }
 
 .chart-container {
