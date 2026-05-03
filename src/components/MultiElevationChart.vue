@@ -76,7 +76,7 @@ watchEffect(
     }))
 
     if (chartInstance.options.plugins?.legend) {
-      chartInstance.options.plugins.legend.display = currentTracks.length > 1
+      chartInstance.options.plugins.legend.display = false
     }
 
     if (firstRun) {
