@@ -1,5 +1,5 @@
 {
-  "name": "@la-rampa/elevation-cursor-sync",
+  "name": "@gradhist/elevation-cursor-sync",
   "version": "0.1.0",
   "description": "Distance-based cursor synchronisation composable for Vue 3 track visualisation components",
   "type": "module",

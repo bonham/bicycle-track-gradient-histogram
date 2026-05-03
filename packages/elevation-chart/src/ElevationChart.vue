@@ -10,7 +10,7 @@ import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
 import { ZoomPanState, type DataInterval } from './lib/ZoomState';
 import { wheelEventHandler, panEventHandler, calcXPosition, touchEventHandler } from './lib/eventHandlers';
 import { TransformPixelScale2ChartScale } from './lib/TransformPixelScale2ChartScale';
-import type { TrackPoint, CursorSync } from '@la-rampa/elevation-cursor-sync';
+import type { TrackPoint, CursorSync } from '@gradhist/elevation-cursor-sync';
 
 import { Chart } from 'chart.js/auto';
 
@@ -41,7 +41,7 @@ const baseInterval = computed((): DataInterval | null => {
 })
 
 /****** Refs *****/
-const canvasRef   = ref<HTMLCanvasElement | null>(null);
+const canvasRef = ref<HTMLCanvasElement | null>(null);
 /** Currently visible slice of the data; null = show everything. */
 const viewPortRef = ref<DataInterval | null>(null)
 
@@ -130,10 +130,10 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
   for (const interval of intervals) {
     const [start, end] = interval
     if (start === undefined) { console.error(`Start is not defined`); return [] }
-    if (end   === undefined) { console.error(`End is not defined`);   return [] }
+    if (end === undefined) { console.error(`End is not defined`); return [] }
     if (start >= sourceLength) { console.error(`Interval start ${start} out of bounds`); return [] }
-    if (end   >= sourceLength) { console.error(`Interval end ${end} out of bounds`);     return [] }
-    if (start >= end)          { console.error(`start ${start} not < end ${end}`);       return [] }
+    if (end >= sourceLength) { console.error(`Interval end ${end} out of bounds`); return [] }
+    if (start >= end) { console.error(`start ${start} not < end ${end}`); return [] }
     for (let i = start; i <= end; i++) {
       resultArray[i] = baseData[i]!
     }
@@ -159,10 +159,10 @@ function getScaleX(min: number | undefined, max: number | undefined) {
 function getScaleY(dataMin: number | undefined, dataMax: number | undefined) {
   let minMaxOpts = {}
   if (dataMin !== undefined && dataMax !== undefined) {
-    const range   = dataMax - dataMin
+    const range = dataMax - dataMin
     const padding = range * 0.1
     const minY = Math.floor((dataMin - padding) / 10) * 10
-    const maxY = Math.ceil( (dataMax + padding) / 10) * 10
+    const maxY = Math.ceil((dataMax + padding) / 10) * 10
     minMaxOpts = { min: minY, max: maxY }
   }
   return { title: { display: true, text: 'Elevation (m)' }, ...minMaxOpts }
@@ -209,11 +209,11 @@ onMounted(() => {
       scales,
       plugins: {
         tooltip: { enabled: false },
-        legend:  { display: false },
+        legend: { display: false },
       },
       elements: {
         point: { radius: 2, pointStyle: 'circle' },
-        line:  { tension: 0.2 },
+        line: { tension: 0.2 },
       },
       transitions: {
         scroll_update: { animation: { duration: 0 } },
@@ -223,16 +223,16 @@ onMounted(() => {
   });
 
   // ─────────────── drag-to-pan state ──────────────────────────────────────
-  let isDragging  = false
+  let isDragging = false
   let scaleXStart: number | undefined = undefined
 
   canvas.addEventListener('mousedown', (event) => {
-    isDragging  = true
+    isDragging = true
     scaleXStart = clientXtoChartX(canvas, event.clientX)
   })
 
   canvas.addEventListener('mouseup', () => {
-    isDragging  = false
+    isDragging = false
     scaleXStart = undefined
   })
 
@@ -241,14 +241,14 @@ onMounted(() => {
     if (viewPortRef.value !== undefined) viewPortRef.value = obj
   }
 
-  let oldWheelHandler:     ((event: WheelEvent) => void) | undefined
+  let oldWheelHandler: ((event: WheelEvent) => void) | undefined
   let oldMouseMoveHandler: ((event: MouseEvent) => void) | undefined
 
   watch(baseInterval, (newInterval) => {
     if (newInterval === null) return
 
     // Remove stale event handlers from the previous track
-    if (oldWheelHandler)     canvas.removeEventListener('wheel',     oldWheelHandler)
+    if (oldWheelHandler) canvas.removeEventListener('wheel', oldWheelHandler)
     if (oldMouseMoveHandler) canvas.removeEventListener('mousemove', oldMouseMoveHandler)
 
     // Reset visible range to show the full new track
@@ -271,7 +271,7 @@ onMounted(() => {
         if (!chartInstance) return
         const scaleXCurrent = clientXtoChartX(canvas, event.clientX)
         if (scaleXCurrent === undefined) { console.log("Cannot get scaleXCurrent"); return }
-        if (scaleXStart   === undefined) { console.log("pixelXStart is undefined");  return }
+        if (scaleXStart === undefined) { console.log("pixelXStart is undefined"); return }
         const shiftX = scaleXCurrent - scaleXStart
         panEventHandler(-shiftX, zoomState, updateChartFn) // negate: mouse right = pan left
       } else {
@@ -281,7 +281,7 @@ onMounted(() => {
     }
     canvas.addEventListener('mousemove', newMouseMoveHandler)
 
-    oldWheelHandler     = newWheelHandler
+    oldWheelHandler = newWheelHandler
     oldMouseMoveHandler = newMouseMoveHandler
 
     // ─────────────── touch (pinch-zoom + single-finger hover) ────────────
@@ -364,7 +364,7 @@ function notifyCursor(canvas: HTMLCanvasElement, clientX: number) {
  */
 function clientXtoChartX(canvas: HTMLCanvasElement, clientX: number): number | undefined {
   const rect = canvas.getBoundingClientRect();
-  const x    = clientX - rect.left;
+  const x = clientX - rect.left;
   let xValue: number | undefined;
   if (chartInstance) {
     xValue = chartInstance.scales['x']!.getValueForPixel(x);

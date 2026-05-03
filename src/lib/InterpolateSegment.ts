@@ -75,4 +75,16 @@ function detectEqualElements(a: unknown[]): number[] {
   return indices
 }
 
-export { makeEquidistantTrackAkima, detectEqualElements };
+export { makeEquidistantTrackAkima, detectEqualElements, addDistancesToSegment };
+
+/**
+ * Adds cumulative haversine distance to each point of a raw segment,
+ * without resampling. Used when interpolation is disabled.
+ */
+function addDistancesToSegment(coords: TrackSegment): TrackSegmentWithDistance {
+  let totalDist = 0
+  return coords.map((p, i) => {
+    if (i > 0) totalDist += haversineDistance(coords[i - 1]!, p)
+    return { ...p, distanceFromStart: totalDist }
+  })
+}

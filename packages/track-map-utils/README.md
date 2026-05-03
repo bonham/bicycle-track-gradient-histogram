@@ -1,4 +1,4 @@
-# @la-rampa/track-map-utils
+# @gradhist/track-map-utils
 
 OpenLayers utilities for GPS track visualisation: spatial indexing, GeoJSON conversion, layer factories, and zoom helpers.
 
@@ -7,7 +7,7 @@ These are framework-agnostic (no Vue dependency) building blocks for OpenLayers-
 ## Installation
 
 ```bash
-npm install @la-rampa/track-map-utils
+npm install @gradhist/track-map-utils
 ```
 
 **Peer dependencies:** `ol ^10.6`, `kdbush ^4.0.2`, `geokdbush ^2.0.1`
@@ -19,7 +19,7 @@ npm install @la-rampa/track-map-utils
 Spatial index for fast nearest-track-point lookup (O(log n) via KDBush).
 
 ```ts
-import { TrackPointIndex } from '@la-rampa/track-map-utils'
+import { TrackPointIndex } from '@gradhist/track-map-utils'
 
 // Build index from WGS-84 points (once per track load)
 const index = new TrackPointIndex(latLonPoints) // [{ lon, lat }]
@@ -33,7 +33,7 @@ const nearestIdx = index.getNearestIndex({ lon: 8.67, lat: 49.41 })
 Factory that creates the three pre-configured OpenLayers vector layers needed for track display.
 
 ```ts
-import { getMapElements } from '@la-rampa/track-map-utils'
+import { getMapElements } from '@gradhist/track-map-utils'
 
 const {
   baseTrackVectorSource,
@@ -57,7 +57,7 @@ Default colours: base track `#37a3eb` (blue 4 px), overlay `#dc3912` (red 3 px),
 Manages a single position marker on the map.
 
 ```ts
-import { MarkerOnTrack } from '@la-rampa/track-map-utils'
+import { MarkerOnTrack } from '@gradhist/track-map-utils'
 
 const marker = new MarkerOnTrack(markerSource)
 
@@ -74,7 +74,7 @@ marker.clear() // hide marker
 Converts a GeoJSON LineString (EPSG:4326) to an OpenLayers Feature (EPSG:3857).
 
 ```ts
-import { geojsonLineString2OpenLayersLineString } from '@la-rampa/track-map-utils'
+import { geojsonLineString2OpenLayersLineString } from '@gradhist/track-map-utils'
 
 const olFeature = geojsonLineString2OpenLayersLineString(geojsonLineString)
 baseTrackVectorSource.addFeature(olFeature)
@@ -89,7 +89,7 @@ Same as above but for MultiLineString features (e.g. multi-segment climb overlay
 Fits the map view to the extent of a track source with animation.
 
 ```ts
-import { zoomToTrack } from '@la-rampa/track-map-utils'
+import { zoomToTrack } from '@gradhist/track-map-utils'
 
 zoomToTrack(map, baseTrackVectorSource)
 ```
@@ -110,8 +110,8 @@ import {
   getMapElements,
   geojsonLineString2OpenLayersLineString,
   zoomToTrack,
-} from '@la-rampa/track-map-utils'
-import type { CursorSync } from '@la-rampa/elevation-cursor-sync'
+} from '@gradhist/track-map-utils'
+import type { CursorSync } from '@gradhist/elevation-cursor-sync'
 
 const props = defineProps<{ cursor: CursorSync /* ... */ }>()
 

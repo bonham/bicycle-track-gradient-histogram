@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { TrackPointIndex } from '@la-rampa/track-map-utils'
+import { TrackPointIndex } from '@gradhist/track-map-utils'
 
 describe("TrackPointIndex", () => {
   test("first", () => {
