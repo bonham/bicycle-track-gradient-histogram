@@ -1,7 +1,14 @@
 <template>
-  <div class="chart-container px-1">
-    <canvas ref="canvasRef" @dblclick="resetZoom"></canvas>
-    <button v-if="isZoomed" class="reset-zoom-btn" @click="resetZoom">Reset zoom</button>
+  <div class="chart-wrapper px-1">
+    <div class="chart-controls">
+      <label class="log-scale-label">
+        <input type="checkbox" v-model="useLogScale" /> Log Y
+      </label>
+    </div>
+    <div class="chart-container">
+      <canvas ref="canvasRef" @dblclick="resetZoom"></canvas>
+      <button v-if="isZoomed" class="reset-zoom-btn" @click="resetZoom">Reset zoom</button>
+    </div>
   </div>
 </template>
 
@@ -21,6 +28,7 @@ const props = defineProps<{
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const isZoomed = ref(false)
+const useLogScale = ref(false)
 
 type TType = 'line'
 type TData = { x: number; y: number }[]
@@ -32,12 +40,6 @@ function resetZoom() {
   isZoomed.value = false
 }
 
-/**
- * For a gradient threshold g, computes how many km of track qualify:
- * - g >= 0: counts segments with gradient >= g (uphill at or steeper than g)
- * - g < 0:  counts segments with gradient <= g (downhill at or steeper than g)
- * Weights by actual segment distance — correct for both interpolated and raw tracks.
- */
 function buildCurve(gradients: GradientSegment[], gValues: number[]): TData {
   return gValues.map(g => ({
     x: g,
@@ -47,11 +49,29 @@ function buildCurve(gradients: GradientSegment[], gValues: number[]): TData {
   }))
 }
 
+function buildTrackGValues(track: TrackEntry): number[] {
+  const gradients = track.gradients.map(s => s.gradient)
+  const gMin = Math.floor(Math.min(...gradients))
+  const gMax = Math.ceil(Math.max(...gradients))
+  const values: number[] = []
+  for (let g = gMin; g <= gMax; g = Math.round((g + 0.5) * 10) / 10) {
+    values.push(g)
+  }
+  return values
+}
+
+function applyYScale() {
+  if (!chartInstance?.options?.scales?.y) return
+  chartInstance.options.scales.y.type = useLogScale.value ? 'logarithmic' : 'linear'
+  chartInstance.options.scales.y.min = useLogScale.value ? undefined : 0
+  chartInstance.update('none')
+}
+
+watch(useLogScale, applyYScale)
+
 let firstRun = true
 watchEffect(
   () => {
-    // Access reactive prop FIRST so Vue tracks it as a dependency,
-    // even on the initial run when chartInstance is still null (pre-mount).
     const currentTracks = props.tracks
 
     if (!chartInstance) return
@@ -62,29 +82,19 @@ watchEffect(
       return
     }
 
-    // Global gradient range across all tracks
-    const allGradients = currentTracks.flatMap(t => t.gradients.map(s => s.gradient))
-    const gMin = Math.floor(Math.min(...allGradients))
-    const gMax = Math.ceil(Math.max(...allGradients))
-
-    if (!isFinite(gMin) || !isFinite(gMax) || gMin > gMax) return
-
-    // Build x-axis values at 0.5% steps
-    const gValues: number[] = []
-    for (let g = gMin; g <= gMax; g = Math.round((g + 0.5) * 10) / 10) {
-      gValues.push(g)
-    }
-
-    chartInstance.data.datasets = currentTracks.map(track => ({
-      data: buildCurve(track.gradients, gValues),
-      borderColor: track.color,
-      fill: false,
-      pointStyle: false as const,
-      label: track.name,
-    }))
+    chartInstance.data.datasets = currentTracks.map(track => {
+      const gValues = buildTrackGValues(track)
+      return {
+        data: buildCurve(track.gradients, gValues),
+        borderColor: track.color,
+        fill: false,
+        pointStyle: false as const,
+        label: track.name,
+      }
+    })
 
     if (chartInstance.options.plugins?.legend) {
-      chartInstance.options.plugins.legend.display = currentTracks.length > 1
+      chartInstance.options.plugins.legend.display = true
     }
 
     if (firstRun) {
@@ -101,17 +111,12 @@ watch(
   () => props.zoomResetKey,
   () => {
     if (!chartInstance) return
-    const currentTracks = props.tracks
-    const allGradients = currentTracks.flatMap(t => t.gradients.map(s => s.gradient))
-    const gMin = Math.floor(Math.min(...allGradients))
-    const gMax = Math.ceil(Math.max(...allGradients))
-    if (!isFinite(gMin) || !isFinite(gMax) || gMin > gMax) return
     if (chartInstance.options.scales) {
       chartInstance.options.scales['x'] = {
         type: 'linear' as const,
         title: { display: true, text: 'Gradient threshold (%)' },
-        min: gMin,
-        max: gMax,
+        min: undefined,
+        max: undefined,
       }
     }
     chartInstance.resetZoom()
@@ -136,13 +141,14 @@ onMounted(() => {
           title: { display: true, text: 'Gradient threshold (%)' },
         },
         y: {
+          type: 'linear',
           title: { display: true, text: 'km above threshold' },
           min: 0,
         },
       },
       plugins: {
         tooltip: { enabled: false },
-        legend: { display: false },
+        legend: { display: true },
         zoom: {
           zoom: {
             wheel: { enabled: true },
@@ -167,10 +173,27 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.chart-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 4px;
+}
+
+.log-scale-label {
+  font-size: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+}
+
 .chart-container {
   position: relative;
   width: 100%;
-  height: 250px;
+  height: 400px;
 }
 
 canvas {

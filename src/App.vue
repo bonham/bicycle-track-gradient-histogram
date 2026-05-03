@@ -17,8 +17,17 @@ interface TrackSource {
 
 const trackSources = ref<TrackSource[]>([])
 const exampleTrackLoaded = ref(false)
-const interpolate = ref(false)
+const interpolateInput = ref(0)
+const interpolate = ref(0)
 const zoomResetKey = ref(0)
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function onInterpolateInput(event: Event) {
+  const val = Math.max(0, Number((event.target as HTMLInputElement).value))
+  interpolateInput.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => { interpolate.value = val }, 400)
+}
 
 const tracks = computed(() =>
   trackSources.value.map(s => featureCollectionToTrackEntry(s.fc, s.name, s.color, interpolate.value))
@@ -85,9 +94,10 @@ onUnmounted(() => {
       <div class="container-fluid">
         <span class="fw-bold mb-0">Gradient Histogram</span>
         <div class="d-flex flex-row gap-2 align-items-center">
-          <div class="form-check form-switch mb-0 d-flex align-items-center gap-1">
-            <input class="form-check-input" type="checkbox" role="switch" id="interpolateToggle" v-model="interpolate">
-            <label class="form-check-label" for="interpolateToggle">Interpolate</label>
+          <div class="d-flex align-items-center gap-1">
+            <label for="interpolateInput" class="mb-0 small">Interpolate (m)</label>
+            <input id="interpolateInput" type="number" class="form-control form-control-sm no-spinner" style="width: 80px" min="0"
+              step="1" :value="interpolateInput" @input="onInterpolateInput" placeholder="0">
           </div>
           <span class="border border-1 rounded px-2 py-1" @click="clearTracks">Clear</span>
           <DropPanel @files-dropped="addFiles">
@@ -104,11 +114,11 @@ onUnmounted(() => {
         <MapView :tracks="tracks" :zoom-reset-key="zoomResetKey" />
       </div>
     </DropField>
-    <div class="py-3 border-bottom">
-      <MultiElevationChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
-    </div>
     <div class="py-3">
       <GradientHistogramChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
+    </div>
+    <div class="py-3 border-bottom">
+      <MultiElevationChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
     </div>
   </div>
   <div v-if="showScrollHint" class=" text-center row scroll-indicator">
@@ -136,6 +146,15 @@ onUnmounted(() => {
 
 .navbar {
   background-color: #f8f5e8 !important;
+}
+
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
 }
 
 .container {

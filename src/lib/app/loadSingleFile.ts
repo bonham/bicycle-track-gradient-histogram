@@ -9,7 +9,6 @@ import type { TrackEntry } from '@/types/TrackEntry'
 import type { TrackPoint } from '@gradhist/elevation-cursor-sync'
 import type { FeatureCollection, LineString } from 'geojson'
 
-const POINT_DISTANCE = 10
 
 /**
  * Converts a GeoJSON FeatureCollection into a TrackEntry.
@@ -19,12 +18,12 @@ export function featureCollectionToTrackEntry(
   fc: FeatureCollection<LineString>,
   name: string,
   color: string,
-  interpolate: boolean = true,
+  interpolate: number = 0,
 ): TrackEntry {
   const tracks = GeoJsonLoader.loadFromGeoJson(fc)
   const segment = extractFirstSegmentFirstTrack(tracks)
-  const source = interpolate ? makeEquidistantTrackAkima(segment, POINT_DISTANCE) : addDistancesToSegment(segment)
-  const indexed = new TrackSegmentIndexed(source, POINT_DISTANCE)
+  const source = interpolate > 0 ? makeEquidistantTrackAkima(segment, interpolate) : addDistancesToSegment(segment)
+  const indexed = new TrackSegmentIndexed(source, interpolate > 0 ? interpolate : 10)
 
   const trackPoints: TrackPoint[] = indexed.getSegment().map(p => ({
     distance: p.distanceFromStart,
@@ -49,7 +48,7 @@ export function featureCollectionToTrackEntry(
 /**
  * Full pipeline: File → TrackEntry.
  */
-export async function loadSingleFile(file: File, color: string, interpolate: boolean = true): Promise<TrackEntry> {
+export async function loadSingleFile(file: File, color: string, interpolate: number = 0): Promise<TrackEntry> {
   const fc = await readSingleFile(file)
   const name = file.name.replace(/\.(gpx|fit)$/i, '')
   return featureCollectionToTrackEntry(fc, name, color, interpolate)
