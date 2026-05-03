@@ -18,7 +18,7 @@ interface TrackSource {
 const trackSources = ref<TrackSource[]>([])
 const exampleTrackLoaded = ref(false)
 const interpolateInput = ref(100)
-const interpolate = ref(0)
+const interpolate = ref(interpolateInput.value)
 const zoomResetKey = ref(0)
 const useLogScale = ref(true)
 
@@ -180,16 +180,16 @@ onUnmounted(() => {
 
     <!-- Map + Legend row -->
     <div class="map-legend-area border">
-        <div class="map-square-wrapper">
-          <MapView :tracks="tracks" :zoom-reset-key="zoomResetKey" />
-        </div>
-        <div class="legend-panel" ref="legendPanelRef" v-if="tracks.length > 0" :style="{ fontSize: legendFontSize }">
-          <div v-for="track in tracks" :key="track.name" class="legend-item">
-            <span class="legend-dot" :style="{ backgroundColor: track.color }"></span>
-            <span class="legend-name">{{ abbreviateNameFn(track.name) }}</span>
-          </div>
+      <div class="map-square-wrapper">
+        <MapView :tracks="tracks" :zoom-reset-key="zoomResetKey" />
+      </div>
+      <div class="legend-panel" ref="legendPanelRef" v-if="tracks.length > 0" :style="{ fontSize: legendFontSize }">
+        <div v-for="track in tracks" :key="track.name" class="legend-item">
+          <span class="legend-dot" :style="{ backgroundColor: track.color }"></span>
+          <span class="legend-name">{{ abbreviateNameFn(track.name) }}</span>
         </div>
       </div>
+    </div>
 
     <!-- Histogram: always full width -->
     <div class="py-3">
