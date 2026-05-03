@@ -4,7 +4,7 @@ import MultiElevationChart from '@/components/MultiElevationChart.vue';
 import GradientHistogramChart from '@/components/GradientHistogramChart.vue';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { featureCollectionToTrackEntry, readFileToSource } from '@/lib/app/loadSingleFile';
 import { TRACK_COLORS } from '@/types/TrackEntry';
 import type { FeatureCollection, LineString } from 'geojson';
@@ -34,16 +34,67 @@ const tracks = computed(() =>
   trackSources.value.map(s => featureCollectionToTrackEntry(s.fc, s.name, s.color, interpolate.value))
 )
 
-function abbreviateName(name: string): string {
-  if (name.length <= 22) return name
-  return name.slice(0, 10) + '..' + name.slice(-10)
+function commonPrefix(names: string[]): string {
+  if (names.length < 2) return ''
+  let prefix = names[0]!
+  for (let i = 1; i < names.length; i++) {
+    while (!names[i]!.startsWith(prefix)) prefix = prefix.slice(0, -1)
+    if (!prefix) return ''
+  }
+  return prefix
 }
 
+function commonSuffix(names: string[]): string {
+  if (names.length < 2) return ''
+  let suffix = names[0]!
+  for (let i = 1; i < names.length; i++) {
+    while (!names[i]!.endsWith(suffix)) suffix = suffix.slice(1)
+    if (!suffix) return ''
+  }
+  return suffix
+}
+
+const abbreviateNameFn = computed(() => {
+  const names = tracks.value.map(t => t.name)
+  const prefix = commonPrefix(names)
+  const suffix = commonSuffix(names)
+  const stripPrefix = prefix.length >= 3
+  const stripSuffix = suffix.length >= 3
+  return (name: string): string => {
+    let result = name
+    if (stripPrefix) result = '..' + result.slice(prefix.length)
+    if (stripSuffix) result = result.slice(0, result.length - suffix.length) + '..'
+    if (result.length > 22) result = result.slice(0, 10) + '..' + result.slice(-10)
+    return result
+  }
+})
+
+const legendPanelRef = ref<HTMLElement | null>(null)
+const legendPanelWidth = ref(200)
+
+let resizeObserver: ResizeObserver | null = null
+watch(legendPanelRef, (el) => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  if (el) {
+    resizeObserver = new ResizeObserver(entries => {
+      legendPanelWidth.value = entries[0]!.contentRect.width
+    })
+    resizeObserver.observe(el)
+  }
+})
+
 const legendFontSize = computed(() => {
-  const n = tracks.value.length
-  if (n > 12) return '0.6rem'
-  if (n > 6) return '0.72rem'
-  return '0.85rem'
+  const names = tracks.value.map(t => abbreviateNameFn.value(t.name))
+  if (names.length === 0) return '0.85rem'
+  const longestLen = Math.max(...names.map(s => s.length))
+  // contentRect.width is padding-box inner width; grid splits it into 2 cols with columnGap
+  const colWidth = (legendPanelWidth.value - 8) / 2  // 8px column-gap
+  const textWidth = colWidth - 20 - 6               // 20px dot, 6px item gap
+  // monospace char width ≈ 0.6 × font-size; 1rem = 16px
+  const idealRem = textWidth / (longestLen * 0.6) / 16
+  const clamped = Math.min(0.85, Math.max(0.5, idealRem))
+  return `${clamped.toFixed(2)}rem`
 })
 
 function getNextColor(): string {
@@ -98,11 +149,12 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', checkScrollHint)
   window.removeEventListener('resize', checkScrollHint)
+  resizeObserver?.disconnect()
 })
 </script>
 
 <template>
-  <div class="container px-0 mx-auto border bg-light">
+  <DropField @files-dropped="addFiles" class="container px-0 mx-auto border bg-light">
     <nav class="navbar mbb-0">
       <div class="container-fluid">
         <span class="fw-bold mb-0">Gradient Histogram</span>
@@ -127,19 +179,17 @@ onUnmounted(() => {
     </nav>
 
     <!-- Map + Legend row -->
-    <DropField @files-dropped="addFiles">
-      <div class="map-legend-area border">
+    <div class="map-legend-area border">
         <div class="map-square-wrapper">
           <MapView :tracks="tracks" :zoom-reset-key="zoomResetKey" />
         </div>
-        <div class="legend-panel" v-if="tracks.length > 0" :style="{ fontSize: legendFontSize }">
+        <div class="legend-panel" ref="legendPanelRef" v-if="tracks.length > 0" :style="{ fontSize: legendFontSize }">
           <div v-for="track in tracks" :key="track.name" class="legend-item">
             <span class="legend-dot" :style="{ backgroundColor: track.color }"></span>
-            <span class="legend-name">{{ abbreviateName(track.name) }}</span>
+            <span class="legend-name">{{ abbreviateNameFn(track.name) }}</span>
           </div>
         </div>
       </div>
-    </DropField>
 
     <!-- Histogram: always full width -->
     <div class="py-3">
@@ -150,7 +200,7 @@ onUnmounted(() => {
     <div class="py-3 border-bottom">
       <MultiElevationChart :tracks="tracks" :zoom-reset-key="zoomResetKey" />
     </div>
-  </div>
+  </DropField>
   <div v-if="showScrollHint" class="text-center row scroll-indicator">
     <div class="col-3"></div>
     <i class="col-1 bi bi-caret-down-fill animate-bounce"></i>
@@ -175,10 +225,11 @@ onUnmounted(() => {
 
 .legend-panel {
   width: 100%;
-  height: 260px;
+  height: auto;
+  max-height: 260px;
   padding: 12px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px 8px;
   align-content: start;
   overflow: hidden;
@@ -223,7 +274,6 @@ onUnmounted(() => {
 
 .legend-name {
   font-family: monospace;
-  font-size: 0.85rem;
 }
 
 /* Scroll hint */

@@ -29,6 +29,13 @@ type TType = 'line'
 type TData = { x: number; y: number }[]
 
 let chartInstance: Chart<TType, TData, string> | null = null
+const curveCache = new Map<string, TData>()
+let updateTimeout: ReturnType<typeof setTimeout> | null = null
+
+function scheduleUpdate() {
+  if (updateTimeout !== null) clearTimeout(updateTimeout)
+  updateTimeout = setTimeout(() => { chartInstance?.update('none'); updateTimeout = null }, 0)
+}
 
 function resetZoom() {
   chartInstance?.resetZoom()
@@ -69,7 +76,7 @@ function buildTrackGValues(track: TrackEntry): number[] {
 function applyYScale() {
   if (!chartInstance?.options?.scales?.y) return
   chartInstance.options.scales.y.type = props.useLogScale ? 'logarithmic' : 'linear'
-  chartInstance.options.scales.y.min = props.useLogScale ? undefined : 0
+  chartInstance.options.scales.y.min = props.useLogScale ? 0.01 : 0
   chartInstance.update('none')
 }
 
@@ -82,16 +89,25 @@ watchEffect(
 
     if (!chartInstance) return
 
+    const currentNames = new Set(currentTracks.map(t => `${t.name}:${t.trackPoints.length}`))
+    for (const key of curveCache.keys()) {
+      if (!currentNames.has(key)) curveCache.delete(key)
+    }
+
     if (currentTracks.length === 0) {
       chartInstance.data.datasets = []
-      chartInstance.update('none')
+      scheduleUpdate()
       return
     }
 
     chartInstance.data.datasets = currentTracks.map(track => {
-      const gValues = buildTrackGValues(track)
+      const key = `${track.name}:${track.trackPoints.length}`
+      if (!curveCache.has(key)) {
+        const gValues = buildTrackGValues(track)
+        curveCache.set(key, buildCurve(track.gradients, gValues))
+      }
       return {
-        data: buildCurve(track.gradients, gValues),
+        data: curveCache.get(key)!,
         borderColor: track.color,
         fill: false,
         pointStyle: false as const,
@@ -104,11 +120,9 @@ watchEffect(
     }
 
     if (firstRun) {
-      requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
       firstRun = false
-    } else {
-      chartInstance.update('none')
     }
+    scheduleUpdate()
   },
   { flush: 'post' },
 )
@@ -121,11 +135,14 @@ watch(
       chartInstance.options.scales['x'] = {
         type: 'linear' as const,
         title: { display: true, text: 'Gradient threshold (%)' },
-        min: undefined,
-        max: undefined,
+        min: -20,
+        max: 20,
       }
     }
     chartInstance.resetZoom()
+    if (chartInstance.options.scales?.y) {
+      chartInstance.options.scales.y.min = props.useLogScale ? 0.01 : 0
+    }
     isZoomed.value = false
   },
 )
@@ -145,9 +162,12 @@ onMounted(() => {
         x: {
           type: 'linear',
           title: { display: true, text: 'Gradient threshold (%)' },
+          min: -20,
+          max: 20,
         },
         y: {
           type: 'logarithmic',
+          min: 0.01,
           title: { display: true, text: 'km above threshold' },
         },
       },
@@ -192,6 +212,10 @@ onMounted(() => {
 canvas {
   width: 100%;
   height: 100%;
+}
+
+.chart-container:not(:hover) canvas {
+  pointer-events: none;
 }
 
 .reset-zoom-btn {
