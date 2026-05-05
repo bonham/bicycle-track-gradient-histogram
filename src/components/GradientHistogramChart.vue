@@ -30,12 +30,6 @@ type TData = { x: number; y: number }[]
 
 let chartInstance: Chart<TType, TData, string> | null = null
 const curveCache = new Map<string, TData>()
-let updateTimeout: ReturnType<typeof setTimeout> | null = null
-
-function scheduleUpdate() {
-  if (updateTimeout !== null) clearTimeout(updateTimeout)
-  updateTimeout = setTimeout(() => { chartInstance?.update('none'); updateTimeout = null }, 0)
-}
 
 function resetZoom() {
   chartInstance?.resetZoom()
@@ -76,7 +70,7 @@ function buildTrackGValues(track: TrackEntry): number[] {
 function applyYScale() {
   if (!chartInstance?.options?.scales?.y) return
   chartInstance.options.scales.y.type = props.useLogScale ? 'logarithmic' : 'linear'
-  chartInstance.options.scales.y.min = props.useLogScale ? 0.01 : 0
+  chartInstance.options.scales.y.min = props.useLogScale ? 0.1 : 0
   chartInstance.update('none')
 }
 
@@ -96,7 +90,7 @@ watchEffect(
 
     if (currentTracks.length === 0) {
       chartInstance.data.datasets = []
-      scheduleUpdate()
+      chartInstance.update('none')
       return
     }
 
@@ -120,9 +114,11 @@ watchEffect(
     }
 
     if (firstRun) {
+      requestAnimationFrame(() => chartInstance?.update('none'))
       firstRun = false
+    } else {
+      chartInstance.update('none')
     }
-    scheduleUpdate()
   },
   { flush: 'post' },
 )
@@ -141,7 +137,7 @@ watch(
     }
     chartInstance.resetZoom()
     if (chartInstance.options.scales?.y) {
-      chartInstance.options.scales.y.min = props.useLogScale ? 0.01 : 0
+      chartInstance.options.scales.y.min = props.useLogScale ? 0.1 : 0
     }
     isZoomed.value = false
   },
@@ -167,7 +163,7 @@ onMounted(() => {
         },
         y: {
           type: 'logarithmic',
-          min: 0.01,
+          min: 0.1,
           title: { display: true, text: 'km above threshold' },
         },
       },
