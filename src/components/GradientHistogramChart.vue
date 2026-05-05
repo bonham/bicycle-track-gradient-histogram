@@ -30,12 +30,6 @@ type TData = { x: number; y: number }[]
 
 let chartInstance: Chart<TType, TData, string> | null = null
 const curveCache = new Map<string, TData>()
-let updateTimeout: ReturnType<typeof setTimeout> | null = null
-
-function scheduleUpdate() {
-  if (updateTimeout !== null) clearTimeout(updateTimeout)
-  updateTimeout = setTimeout(() => { chartInstance?.update('none'); updateTimeout = null }, 0)
-}
 
 function resetZoom() {
   chartInstance?.resetZoom()
@@ -96,7 +90,7 @@ watchEffect(
 
     if (currentTracks.length === 0) {
       chartInstance.data.datasets = []
-      scheduleUpdate()
+      chartInstance.update('none')
       return
     }
 
@@ -120,9 +114,11 @@ watchEffect(
     }
 
     if (firstRun) {
+      requestAnimationFrame(() => chartInstance?.update('none'))
       firstRun = false
+    } else {
+      chartInstance.update('none')
     }
-    scheduleUpdate()
   },
   { flush: 'post' },
 )
