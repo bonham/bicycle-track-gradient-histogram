@@ -70,7 +70,7 @@ function buildTrackGValues(track: TrackEntry): number[] {
 function applyYScale() {
   if (!chartInstance?.options?.scales?.y) return
   chartInstance.options.scales.y.type = props.useLogScale ? 'logarithmic' : 'linear'
-  chartInstance.options.scales.y.min = props.useLogScale ? 0.01 : 0
+  chartInstance.options.scales.y.min = props.useLogScale ? 0.1 : 0
   chartInstance.update('none')
 }
 
@@ -137,7 +137,7 @@ watch(
     }
     chartInstance.resetZoom()
     if (chartInstance.options.scales?.y) {
-      chartInstance.options.scales.y.min = props.useLogScale ? 0.01 : 0
+      chartInstance.options.scales.y.min = props.useLogScale ? 0.1 : 0
     }
     isZoomed.value = false
   },
@@ -163,7 +163,7 @@ onMounted(() => {
         },
         y: {
           type: 'logarithmic',
-          min: 0.01,
+          min: 0.1,
           title: { display: true, text: 'km above threshold' },
         },
       },
